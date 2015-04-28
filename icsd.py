@@ -146,7 +146,7 @@ class StandardCSD(Icsd):
     def __init__(self, lfp, coord_electrode=np.linspace(-700E-6, 700E-6, 15),
                  cond=0.3, vaknin_el=True, f_type='gaussian', f_order=(3, 1)):
         Icsd.__init__(self)
-        
+
         self.lfp = lfp
         self.coord_electrode = np.array(coord_electrode)
         self.cond = cond
@@ -512,4 +512,41 @@ class SplineiCSD(Icsd):
         return e_mat0, e_mat1, e_mat2, e_mat3
 
     
-    
+def estimate_csd(lfp_ansigarr, coord_electrode,
+                 diam=500E-6, cond=0.3, cond_top=0.3, tol=1E-6,
+                 f_type='gaussian', f_order=(3, 1), num_steps=200,
+                 method='standard'):
+
+    if not isinstance(lfp_ansigarr, neo.AnalogSignalArray):
+        raise TypeError('LFP is not an neo.AnalogSignalArray!')
+
+    lfp = lfp_ansigarr.magnitude.T * lfp_ansigarr.units
+
+    arg_dict = {'lfp': lfp,
+                'coord_electrode': coord_electrode,
+                'diam': diam,
+                'cond': cond,
+                'cond_top': cond_top,
+                'tol': tol,
+                'f_type': f_type,
+                'f_order': f_order,
+                'num_steps': num_steps}
+
+    if not method in ['standard', 'delta', 'step', 'spline']:
+        raise ValueError("method must be either 'standard', 'delta', 'step', 'spline'")
+
+    if method == 'standard':
+        csd = StandardCSD(**arg_dict)
+
+    elif method == 'delta':
+        csd = DeltaiCSD(**arg_dict)
+    elif method == 'step':
+        csd = StepiCSD(**arg_dict)
+
+    elif method == 'spline':
+        csd = SplineiCSD(**arg_dict)
+
+    csd_ansigarr = neo.AnalogSignalArray(csd.T, t_start=lfp_ansigarr.t_start,
+                                        sampling_rate=lfp_ansigarr.sampling_rate)
+
+    return csd_ansigarr
