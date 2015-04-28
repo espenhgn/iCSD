@@ -89,6 +89,8 @@ import numpy as np
 import scipy.integrate as si
 import scipy.signal as ss
 
+import neo
+
 
 class Icsd(object):
     '''Base iCSD class'''
@@ -517,6 +519,9 @@ def estimate_csd(lfp_ansigarr, coord_electrode,
                  f_type='gaussian', f_order=(3, 1), num_steps=200,
                  method='standard'):
 
+    if not method in ['standard', 'delta', 'step', 'spline']:
+        raise ValueError("method must be either 'standard', 'delta', 'step', 'spline'")
+
     if not isinstance(lfp_ansigarr, neo.AnalogSignalArray):
         raise TypeError('LFP is not an neo.AnalogSignalArray!')
 
@@ -532,17 +537,12 @@ def estimate_csd(lfp_ansigarr, coord_electrode,
                 'f_order': f_order,
                 'num_steps': num_steps}
 
-    if not method in ['standard', 'delta', 'step', 'spline']:
-        raise ValueError("method must be either 'standard', 'delta', 'step', 'spline'")
-
     if method == 'standard':
         csd = StandardCSD(**arg_dict)
-
     elif method == 'delta':
         csd = DeltaiCSD(**arg_dict)
     elif method == 'step':
         csd = StepiCSD(**arg_dict)
-
     elif method == 'spline':
         csd = SplineiCSD(**arg_dict)
 
