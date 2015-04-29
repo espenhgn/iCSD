@@ -2,9 +2,7 @@
 ''' py-iCSD toolbox!
     Translation of the core functionality of the CSDplotter MATLAB package
     to python.
-    
-    Most of the comments got lost in the process. Sorry!
-    
+        
     The method themselves are implemented as callable subclasses of the base
     Icsd class object, which incorporate the initialization of some variables,
     and a basic function for calculating the iCSD, and a general filter
@@ -92,10 +90,17 @@ import quantities as pq
 
 class Icsd(object):
     '''Base iCSD class'''
-    def __init__(self):
-        '''Initialize class iCSD'''
+    def __init__(self, lfp):
+        '''Initialize parent class iCSD
+        
+        Parameters
+        ----------
+        lfp : np.ndarray
+            LFP signal of shape (# channels, # time steps)
+        
+        '''
         self.name = 'iCSD Toolbox'
-        self.lfp = None
+        self.lfp = lfp
         self.csd = None
         self.csd_filtered = None
         self.f_matrix = None
@@ -147,12 +152,32 @@ class Icsd(object):
             self.csd_filtered[:, i] = ss.filtfilt(num, denom, self.csd[:, i])
         
 class StandardCSD(Icsd):
-    '''Standard CSD method with Vaknin electrodes'''
+    '''
+    Standard CSD method with and without Vaknin electrodes
+    '''
     def __init__(self, lfp, coord_electrode=np.linspace(-700E-6, 700E-6, 15),
                  cond=0.3, vaknin_el=True, f_type='gaussian', f_order=(3, 1)):
-        Icsd.__init__(self)
+        '''
+        Initialize standard CSD method class with and without Vaknin electrodes.
         
-        self.lfp = lfp
+        Parameters
+        ----------
+        lfp : np.ndarray
+            LFP signal of shape (# channels, # time steps) in units of V
+        coord_electrode : np.ndarray
+            depth of evenly spaced electrode contact points of shape
+            (# contacts, ) in units of m
+        cond : float
+            conductivity of tissue in units of S/m or 1/(ohm*m)
+        vaknin_el : bool
+            flag for using method of Vaknin to endpoint electrodes
+        f_type : str
+            type of spatial filter, must be a scipy.signal filter design method
+        f_order : list
+            settings for spatial filter, arg passed to  filter design function
+        '''
+        Icsd.__init__(self, lfp)
+        
         self.coord_electrode = coord_electrode
         self.cond = cond
         self.f_type = f_type
@@ -192,17 +217,40 @@ class StandardCSD(Icsd):
         self.lfp = self.lfp[1:-1, ]
      
 class DeltaiCSD(Icsd):
-    '''delta-iCSD method'''
+    '''
+    delta-iCSD method
+    '''
     def __init__(self, lfp,
                  coord_electrode=np.linspace(-700E-6, 700E-6, 15)*pq.m,
                  diam=500E-6*pq.m,
                  cond=0.3*pq.S/pq.m,
                  cond_top=0.3*pq.S/pq.m,
                  f_type='gaussian', f_order=(3, 1)):
-        '''Initialize delta-iCSD method'''
-        Icsd.__init__(self)
+        '''
+        Initialize the delta-iCSD method class object
         
-        self.lfp = lfp
+        Parameters
+        ----------
+        lfp : np.ndarray
+            LFP signal of shape (# channels, # time steps) in units of V
+        coord_electrode : np.ndarray
+            depth of evenly spaced electrode contact points of shape
+            (# contacts, ) in units of m
+        diam : float
+            diamater of the assumed circular planar current sources centered
+            at each contact
+        cond : float
+            conductivity of tissue in units of S/m or 1/(ohm*m)
+        cond_top : float
+            conductivity on top of tissue in units of S/m or 1/(ohm*m)
+        f_type : str
+            type of spatial filter, must be a scipy.signal filter design method
+        f_order : list
+            settings for spatial filter, arg passed to  filter design function
+
+        '''
+        Icsd.__init__(self, lfp)
+        
         self.coord_electrode = coord_electrode
         self.diam = diam
         self.cond = cond
@@ -239,13 +287,38 @@ class DeltaiCSD(Icsd):
 
 class StepiCSD(Icsd):
     '''Step-iCSD method'''
-    def __init__(self, lfp, coord_electrode=np.linspace(-700E-6, 700E-6, 15),
-                 diam=500E-6, cond=0.3, cond_top=0.3, tol=1E-6,
+    def __init__(self, lfp,
+                 coord_electrode=np.linspace(-700E-6, 700E-6, 15)*pq.m,
+                 diam=500E-6*pq.m, cond=0.3*pq.S/pq.m, cond_top=0.3*pq.S/pq.m,
+                 tol=1E-6,
                  f_type = 'gaussian', f_order = (3, 1)):
-        '''Initialize Step-iCSD method'''
-        Icsd.__init__(self)
+        '''
+        Initializing Step-iCSD method class object
         
-        self.lfp = lfp
+        Parameters
+        ----------
+        lfp : np.ndarray
+            LFP signal of shape (# channels, # time steps) in units of V
+        coord_electrode : np.ndarray
+            depth of evenly spaced electrode contact points of shape
+            (# contacts, ) in units of m
+        diam : float
+            diamater of the assumed circular planar current sources centered
+            at each contact
+        cond : float
+            conductivity of tissue in units of S/m or 1/(ohm*m)
+        cond_top : float
+            conductivity on top of tissue in units of S/m or 1/(ohm*m)
+        tol : float
+            tolerance of numerical integration
+        f_type : str
+            type of spatial filter, must be a scipy.signal filter design method
+        f_order : list
+            settings for spatial filter, arg passed to  filter design function
+        
+        '''
+        Icsd.__init__(self, lfp)
+        
         self.coord_electrode = coord_electrode
         self.diam = diam
         self.cond = cond
@@ -295,18 +368,46 @@ class StepiCSD(Icsd):
     
     def f_cylinder(self, zeta, z_val):
         '''function used by class method'''
-        return 1. / (2. * self.cond) * (np.sqrt((self.diam / 2)**2 + \
+        f = 1. / (2. * self.cond) * (np.sqrt((self.diam / 2)**2 + \
             ((z_val - zeta*z_val.units))**2) - abs(z_val - zeta*z_val.units))
+        return f
 
 class SplineiCSD(Icsd):
     '''Spline iCSD method'''
-    def __init__(self, lfp, coord_electrode=np.linspace(-700E-6, 700E-6, 15),
-                 diam=500E-6, cond=0.3, cond_top=0.3, tol=1E-6,
+    def __init__(self, lfp,
+                 coord_electrode=np.linspace(-700E-6, 700E-6, 15)*pq.m,
+                 diam=500E-6*pq.m, cond=0.3*pq.S/pq.m, cond_top=0.3*pq.S/pq.m,
+                 tol=1E-6,
                  f_type='gaussian', f_order=(3, 1), num_steps=200):
-        '''Initialize Spline iCSD method'''
-        Icsd.__init__(self)
+        '''        
+        Initializing Spline-iCSD method class object
         
-        self.lfp = lfp
+        Parameters
+        ----------
+        lfp : np.ndarray
+            LFP signal of shape (# channels, # time steps) in units of V
+        coord_electrode : np.ndarray
+            depth of evenly spaced electrode contact points of shape
+            (# contacts, ) in units of m
+        diam : float
+            diamater of the assumed circular planar current sources centered
+            at each contact
+        cond : float
+            conductivity of tissue in units of S/m or 1/(ohm*m)
+        cond_top : float
+            conductivity on top of tissue in units of S/m or 1/(ohm*m)
+        tol : float
+            tolerance of numerical integration
+        f_type : str
+            type of spatial filter, must be a scipy.signal filter design method
+        f_order : list
+            settings for spatial filter, arg passed to  filter design function
+        num_steps : int
+            number of data points for the spatially upsampled LFP/CSD data
+
+        '''
+        Icsd.__init__(self, lfp)
+        
         self.coord_electrode = coord_electrode
         self.diam = diam
         self.cond = cond
