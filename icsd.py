@@ -215,9 +215,6 @@ class CSD(object):
 
         print 'discrete filter coefficients: \nb = %s, \na = %s' % \
                                                      (num_string, denom_string)
-        #self.csd_filtered = np.empty(self.csd.shape)
-        #for i in xrange(self.csd.shape[1]):
-        #    self.csd_filtered[:, i] = ss.filtfilt(num, denom, self.csd[:, i])
 
         return ss.filtfilt(num, denom, csd, axis=0) * csd.units
 
@@ -260,10 +257,8 @@ class StandardCSD(CSD):
             self.lfp[0, ] = lfp[0, ]
             self.lfp[1:-1, ] = lfp
             self.lfp[-1, ] = lfp[-1, ]
-            #self.f_inv_matrix = np.zeros((lfp.shape[0]+2, lfp.shape[0]+2)) * pq.A / pq.m
         else:
             self.lfp = lfp
-            #self.f_inv_matrix = np.zeros((lfp.shape[0], lfp.shape[0])) * pq.A / pq.m
 
         self.f_inv_matrix = self.get_inv_f_matrix()
 
@@ -271,13 +266,13 @@ class StandardCSD(CSD):
     def get_inv_f_matrix(self):
         '''Calculate the inverse F-matrix for the standard CSD method'''
         h_val = abs(np.diff(self.coord_electrode)[0])
-        
+
         f_inv = -np.eye(self.lfp.shape[0]) * pq.A / pq.m
 
         #Inner matrix elements  is just the discrete laplacian coefficients
         for j in range(1, f_inv.shape[0]-1):
             f_inv[j, j-1:j+2] = np.array([1., -2., 1.]) * pq.A / pq.m
-        
+
         return f_inv * -self.sigma / h_val**2
 
 
@@ -334,7 +329,7 @@ class DeltaiCSD(CSD):
 
         #initialize F- and iCSD-matrices
         self.f_matrix = np.empty((self.coord_electrode.size,
-                                 self.coord_electrode.size))
+                                  self.coord_electrode.size))
 
         self.f_matrix = self.get_f_matrix()
 
@@ -429,16 +424,16 @@ class StepiCSD(CSD):
 
                 #components of f_matrix object
                 f_cyl0 = si.quad(self._f_cylinder,
-                                a=lower_int, b=upper_int,
-                                args=(float(self.coord_electrode[j]),
-                                      float(self.diam),
-                                      float(self.sigma)),
-                                epsabs=self.tol)[0]
+                                 a=lower_int, b=upper_int,
+                                 args=(float(self.coord_electrode[j]),
+                                       float(self.diam),
+                                       float(self.sigma)),
+                                 epsabs=self.tol)[0]
                 f_cyl1 = si.quad(self._f_cylinder, a=lower_int, b=upper_int,
-                        args=(-float(self.coord_electrode[j]),
-                              float(self.diam), float(self.sigma)),
-                        epsabs=self.tol)[0]
-                
+                                 args=(-float(self.coord_electrode[j]),
+                                       float(self.diam), float(self.sigma)),
+                                 epsabs=self.tol)[0]
+
                 #method of images coefficient
                 mom = (self.sigma-self.sigma_top)/(self.sigma+self.sigma_top)
 
@@ -450,8 +445,8 @@ class StepiCSD(CSD):
 
     def _f_cylinder(self, zeta, z_val, diam, sigma):
         '''function used by class method'''
-        f_cyl = 1. / (2. * sigma) * (np.sqrt((diam / 2)**2 +
-                ((z_val - zeta))**2) - abs(z_val - zeta))
+        f_cyl = 1. / (2.*sigma) * \
+            (np.sqrt((diam/2)**2 + ((z_val-zeta))**2) - abs(z_val-zeta))
         return f_cyl
 
 
@@ -570,7 +565,7 @@ class SplineiCSD(CSD):
                                  np.dot(f_mat1, e_mat1) + \
                                  np.dot(f_mat2, e_mat2) + \
                                  np.dot(f_mat3, e_mat3)
-        
+
         return f_matrix * self.coord_electrode.units**2 / self.sigma.units
 
 
@@ -603,27 +598,27 @@ class SplineiCSD(CSD):
 
         # create high res spatial grid
         out_zs = np.linspace(coord_ext[0], coord_ext[-1], self.num_steps)
-        self.csd = np.empty((self.num_steps, self.lfp.shape[1]))
+        csd = np.empty((self.num_steps, self.lfp.shape[1]))
 
         # Calculate iCSD estimate on grid from polynomial coefficients.
         i = 0
         for j in xrange(self.num_steps):
             if out_zs[j] > coord_ext[i+1]:
                 i += 1
-            self.csd[j, :] = a_mat0[i, :] + a_mat1[i, :] * \
+            csd[j, :] = a_mat0[i, :] + a_mat1[i, :] * \
                             (out_zs[j] - coord_ext[i]) +\
                 a_mat2[i, :] * (out_zs[j] - coord_ext[i])**2 + \
                 a_mat3[i, :] * (out_zs[j] - coord_ext[i])**3
 
         csd_unit = (self.f_matrix.units**-1 * self.lfp.units).simplified
 
-        return self.csd * csd_unit
+        return csd * csd_unit
 
 
     def _f_mat0(self, zeta, z_val, sigma, diam):
         '''0'th order potential function'''
-        return 1./(2.*sigma) * (np.sqrt((diam/2)**2 + ((z_val-zeta))**2) -
-                               abs(z_val-zeta))
+        return 1./(2.*sigma) * \
+            (np.sqrt((diam/2)**2 + ((z_val-zeta))**2) - abs(z_val-zeta))
 
 
     def _f_mat1(self, zeta, z_val, zi_val, sigma, diam):
@@ -725,7 +720,7 @@ class SplineiCSD(CSD):
                 elif i == j:
                     tja[i, j] = 1
 
-        # Define spline coeffiscients
+        # Define spline coefficients
         e_mat0 = tja
         e_mat1 = tja*k_matrix
         e_mat2 = 3 * c_mat3**2 * (tjp1a-tja) - c_mat3 * \
