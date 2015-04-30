@@ -779,6 +779,94 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
     -------
     csd : neo.AnalogSignalArray
         Estimated CSD
+
+    Examples
+    -------_
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy import io
+    import quantities as pq
+    import neo
+
+    import icsd
+
+
+    #loading test data
+    test_data = io.loadmat('test_data.mat')
+
+    #prepare lfp data for use, by changing the units to SI and append
+    #quantities, along with electrode geometry and conductivities
+    lfp_data = test_data['pot1'] * 1E-3 * pq.V        # [mV] -> [V]
+    z_data = np.linspace(100E-6, 2300E-6, 23) * pq.m  # [m]
+    diam = 500E-6 * pq.m                              # [m]
+    sigma = 0.3 * pq.S / pq.m                         # [S/m] or [1/(ohm*m)]
+    sigma_top = 0. * pq.S / pq.m                      # [S/m] or [1/(ohm*m)]
+
+    lfp = neo.AnalogSignalArray(lfp_data.T, sampling_rate=1.0*pq.ms)
+
+    # Input dictionaries for each method
+    params = {}
+    params['delta'] = {
+        'method': 'delta',
+        'lfp' : lfp,
+        'coord_electrode' : z_data,
+        'diam' : diam,        # source diameter
+        'sigma' : sigma,           # extracellular conductivity
+        'sigma_top' : sigma,       # conductivity on top of cortex
+    }
+    params['step'] = {
+        'method': 'step',
+        'lfp' : lfp,
+        'coord_electrode' : z_data,
+        'diam' : diam,
+        'sigma' : sigma,
+        'sigma_top' : sigma,
+        'tol' : 1E-12,          # Tolerance in numerical integration
+        }
+    params['spline'] = {
+        'method': 'spline',
+        'lfp' : lfp,
+        'coord_electrode' : z_data,
+        'diam' : diam,
+        'sigma' : sigma,
+        'sigma_top' : sigma,
+        'num_steps' : 201,      # Spatial CSD upsampling to N steps
+        'tol' : 1E-12,
+        }
+    params['standard'] = {
+        'method': 'standard',
+        'lfp' : lfp,
+        'coord_electrode' : z_data,
+        'sigma' : sigma,
+        }
+
+    #plot LFP signal
+    fig, axes = plt.subplots(len(params)+1, 1, figsize=(6, 8))
+    ax = axes[0]
+    im = ax.imshow(lfp.magnitude.T, origin='upper', vmin=-abs(lfp).max(),
+                   vmax=abs(lfp).max(), cmap='jet_r', interpolation='nearest')
+    ax.axis(ax.axis('tight'))
+    cb = plt.colorbar(im, ax=ax)
+    cb.set_label('LFP (%s)' % lfp_data.dimensionality.string)
+    ax.set_xticklabels([])
+    ax.set_title('LFP')
+    ax.set_ylabel('ch #')
+    i_ax = 1
+    for method, param in params.items():
+        ax = axes[i_ax]
+        i_ax += 1
+        csd = icsd.estimate_csd(**param)
+        im = ax.imshow(csd.magnitude.T, origin='upper', vmin=-abs(csd).max(),
+                       vmax=abs(csd).max(), cmap='jet_r',
+                       interpolation='nearest')
+        ax.axis(ax.axis('tight'))
+        ax.set_title(method)
+        cb = plt.colorbar(im, ax=ax)
+        cb.set_label('CSD (%s)' % csd.dimensionality.string)
+        ax.set_xticklabels([])
+        ax.set_ylabel('ch #')
+
+    plt.show()
     """
 
     supported_methods = ('standard', 'delta', 'step', 'spline')
