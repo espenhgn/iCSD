@@ -733,7 +733,7 @@ class SplineiCSD(CSD):
                 np.array(e_mat2), np.array(e_mat3))
 
 
-def estimate_csd(lfp, coord_electrode, method='standard', diam=None, sigma=None,
+def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
                  sigma_top=None, tol=1E-6, num_steps=200, f_type='identity',
                  f_order=None):
 
@@ -743,10 +743,10 @@ def estimate_csd(lfp, coord_electrode, method='standard', diam=None, sigma=None,
     if method not in supported_methods:
         raise ValueError("method must be either of {}".format(", ".join(supported_methods)))
     elif method in icsd_methods and diam is None:
-        raise ValueError("Parameter `diam` must be specified for iCSD methods")
+        raise ValueError("Parameter `diam` must be specified for iCSD methods: {}".format(", ".join(icsd_methods)))
 
     if not isinstance(lfp, neo.AnalogSignalArray):
-        raise TypeError('LFP is not an neo.AnalogSignalArray!')
+        raise TypeError('`lfp` must be neo.AnalogSignalArray')
 
     if f_type is not 'identity' and f_order is None:
         raise ValueError("The order of {} filter must be specified".format(f_type))
@@ -758,15 +758,14 @@ def estimate_csd(lfp, coord_electrode, method='standard', diam=None, sigma=None,
     arg_dict = {'lfp': lfp_pqarr,
                 'coord_electrode': coord_electrode,
                 'sigma': sigma,
-                'sigma_top': sigma_top,
                 'f_type': f_type,
                 'f_order': f_order,
                 }
-
     if method == 'standard':
         csd_estimator = StandardCSD(**arg_dict)
     else:
         arg_dict['diam'] = diam
+        arg_dict['sigma_top'] = sigma_top
         if method == 'delta':
             csd_estimator = DeltaiCSD(**arg_dict)
         else:
@@ -776,12 +775,11 @@ def estimate_csd(lfp, coord_electrode, method='standard', diam=None, sigma=None,
             else:
                 arg_dict['num_steps'] = num_steps
                 csd_estimator = SplineiCSD(**arg_dict)
-
-    csd = csd_estimator.get_csd()
-    csd_ansigarr = neo.AnalogSignalArray(csd.T, t_start=lfp.t_start,
+    csd_pqarr = csd_estimator.get_csd()
+    csd = neo.AnalogSignalArray(csd_pqarr.T, t_start=lfp.t_start,
                                          sampling_rate=lfp.sampling_rate)
 
-    return csd_ansigarr
+    return csd
 
 
 if __name__ == '__main__':
