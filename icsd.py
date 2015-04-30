@@ -158,7 +158,7 @@ class CSD(object):
         '''
         self.name = 'CSD estimate parent class'
         self.lfp = lfp
-        self.f_matrix = np.eye(lfp.shape[0])
+        self.f_matrix = np.eye(lfp.shape[0]) * pq.m**3 * pq.S*-1
         self.f_type = f_type
         self.f_order = f_order
 
@@ -252,31 +252,33 @@ class StandardCSD(CSD):
         self.name = 'Standard CSD method'
         self.coord_electrode = coord_electrode
         self.sigma = sigma
+        self.vaknin_el = vaknin_el
 
         if vaknin_el:
+            #extend array of lfps by duplicating potential at endpoint contacts
             self.lfp = np.empty((lfp.shape[0]+2, lfp.shape[1]))
             self.lfp[0, ] = lfp[0, ]
             self.lfp[1:-1, ] = lfp
             self.lfp[-1, ] = lfp[-1, ]
-            self.f_inv_matrix = np.zeros((lfp.shape[0]+2, lfp.shape[0]+2)) * pq.A / pq.m
+            #self.f_inv_matrix = np.zeros((lfp.shape[0]+2, lfp.shape[0]+2)) * pq.A / pq.m
         else:
             self.lfp = lfp
-            self.f_inv_matrix = np.zeros((lfp.shape[0], lfp.shape[0])) * pq.A / pq.m
+            #self.f_inv_matrix = np.zeros((lfp.shape[0], lfp.shape[0])) * pq.A / pq.m
 
-        self.calc_inv_f_matrix()
+        self.f_inv_matrix = self.get_inv_f_matrix()
 
 
-    def calc_inv_f_matrix(self):
+    def get_inv_f_matrix(self):
         '''Calculate the inverse F-matrix for the standard CSD method'''
         h_val = abs(np.diff(self.coord_electrode)[0])
+        
+        f_inv = -np.eye(self.lfp.shape[0]) * pq.A / pq.m
 
         #Inner matrix elements  is just the discrete laplacian coefficients
-        self.f_inv_matrix[0, 0] = -1 * pq.A / pq.m
-        for j in xrange(1, self.f_inv_matrix.shape[0]-1):
-            self.f_inv_matrix[j, j-1:j+2] = np.array([1., -2., 1.]) * pq.A / pq.m
-        self.f_inv_matrix[-1, -1] = -1 * pq.A / pq.m
-
-        self.f_inv_matrix = self.f_inv_matrix * -self.sigma / h_val**2
+        for j in range(1, f_inv.shape[0]-1):
+            f_inv[j, j-1:j+2] = np.array([1., -2., 1.]) * pq.A / pq.m
+        
+        return f_inv * -self.sigma / h_val**2
 
 
     def get_csd(self):
@@ -331,20 +333,21 @@ class DeltaiCSD(CSD):
         self.f_order = f_order
 
         #initialize F- and iCSD-matrices
-        self.f_matrix = np.empty((self.coord_electrode.size, \
+        self.f_matrix = np.empty((self.coord_electrode.size,
                                  self.coord_electrode.size))
-        self.csd = np.empty(lfp.shape)
 
-        self.calc_f_matrix()
+        self.f_matrix = self.get_f_matrix()
 
 
-    def calc_f_matrix(self):
+    def get_f_matrix(self):
         '''Calculate the F-matrix'''
         h_val = abs(np.diff(self.coord_electrode)[0])
 
-        for j in xrange(self.coord_electrode.size):
-            for i in xrange(self.coord_electrode.size):
-                self.f_matrix[j, i] = h_val / (2 * self.sigma) * \
+        f_matrix = np.empty((self.coord_electrode.size,
+                             self.coord_electrode.size))
+        for j in range(self.coord_electrode.size):
+            for i in range(self.coord_electrode.size):
+                f_matrix[j, i] = h_val / (2 * self.sigma) * \
                     ((np.sqrt((self.coord_electrode[j] - \
                     self.coord_electrode[i])**2 + (self.diam / 2)**2) - \
                     abs(self.coord_electrode[j] - self.coord_electrode[i])) +\
@@ -353,7 +356,7 @@ class DeltaiCSD(CSD):
                     self.coord_electrode[i])**2 + (self.diam / 2)**2) - \
                     abs(self.coord_electrode[j] + self.coord_electrode[i])))
 
-        self.f_matrix = self.f_matrix / self.sigma.units * h_val.units**2
+        return f_matrix / self.sigma.units * h_val.units**2
 
 
 class StepiCSD(CSD):
@@ -398,10 +401,10 @@ class StepiCSD(CSD):
         self.tol = tol
 
         # compute forward-solution matrix
-        self.calc_f_matrix()
+        self.f_matrix = self.get_f_matrix()
 
 
-    def calc_f_matrix(self):
+    def get_f_matrix(self):
         '''Calculate F-matrix for step iCSD method'''
         el_len = self.coord_electrode.size
         h_val = abs(np.diff(self.coord_electrode)[0])
@@ -442,7 +445,7 @@ class StepiCSD(CSD):
                 f_matrix[j, i] = f_cyl0 + mom*f_cyl1
 
         #assume si.quad trash the units
-        self.f_matrix = f_matrix * h_val.units**2 / self.sigma.units
+        return f_matrix * h_val.units**2 / self.sigma.units
 
 
     def _f_cylinder(self, zeta, z_val, diam, sigma):
@@ -497,10 +500,10 @@ class SplineiCSD(CSD):
         self.num_steps = num_steps
 
         # compute stuff
-        self.calc_f_matrix()
+        self.f_matrix = self.get_f_matrix()
 
 
-    def calc_f_matrix(self):
+    def get_f_matrix(self):
         '''Calculate the F-matrix for cubic spline iCSD method'''
         el_len = self.coord_electrode.size
         z_js = np.zeros(el_len+2)
@@ -562,16 +565,13 @@ class SplineiCSD(CSD):
         e_mat0, e_mat1, e_mat2, e_mat3 = self._calc_e_matrices()
 
         # Calculate the F-matrix
-        self.f_matrix = np.zeros((el_len+2, el_len+2))
-        self.f_matrix[1:-1, :] = np.dot(f_mat0, e_mat0) + \
+        f_matrix = np.eye(el_len+2)
+        f_matrix[1:-1, :] = np.dot(f_mat0, e_mat0) + \
                                  np.dot(f_mat1, e_mat1) + \
                                  np.dot(f_mat2, e_mat2) + \
                                  np.dot(f_mat3, e_mat3)
-        self.f_matrix[0, 0] = 1
-        self.f_matrix[-1, -1] = 1
-
-        self.f_matrix = self.f_matrix * self.coord_electrode.units**2 / \
-                        self.sigma.units
+        
+        return f_matrix * self.coord_electrode.units**2 / self.sigma.units
 
 
     def get_csd(self):
