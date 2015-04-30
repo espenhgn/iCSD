@@ -225,10 +225,29 @@ class StandardCSD(CSD):
     Standard CSD method with and without Vaknin electrodes
     '''
     def __init__(self, lfp, coord_electrode=np.linspace(-700E-6, 700E-6, 15),
-                 cond=0.3, vaknin_el=True, f_type='gaussian', f_order=(3, 1)):
-        Icsd.__init__(self)
-        
-        self.lfp = lfp
+                 sigma=0.3, vaknin_el=True, f_type='gaussian', f_order=(3, 1)):
+        '''
+        Initialize standard CSD method class with and without Vaknin electrodes.
+
+        Parameters
+        ----------
+        lfp : np.ndarray
+            LFP signal of shape (# channels, # time steps) in units of V
+        coord_electrode : np.ndarray
+            depth of evenly spaced electrode contact points of shape
+            (# contacts, ) in units of m
+        sigma : float
+            conductivity of tissue in units of S/m or 1/(ohm*m)
+        vaknin_el : bool
+            flag for using method of Vaknin to endpoint electrodes
+        f_type : str
+            type of spatial filter, must be a scipy.signal filter design method
+        f_order : list
+            settings for spatial filter, arg passed to  filter design function
+        '''
+        CSD.__init__(self, lfp, f_type, f_order)
+
+        self.name = 'Standard CSD method'
         self.coord_electrode = coord_electrode
         self.sigma = sigma
         self.vaknin_el = vaknin_el
