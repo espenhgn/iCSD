@@ -736,20 +736,68 @@ class SplineiCSD(CSD):
 def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
                  sigma_top=None, tol=1E-6, num_steps=200, f_type='identity',
                  f_order=None):
+    """
+    Estimates current source density (CSD) from local field potential (LFP)
+    recordings from multiple depths of the cortex.
+
+    Parameters
+    ----------
+    :param lfp: : neo.AnalogSignalArray
+        LFP signals from which CSD is estimated.
+    :param coord_electrode: : Quantity array
+        Depth of evenly spaced electrode contact points.
+    :param sigma: : Quantity float
+        Conductivity of tissue.
+    :param method: : string
+        CSD estimation method, either of 'standard': the standard
+        double-derivative method, 'delta': delta-iCSD method, 'step':
+        step-iCSD method, 'spline': spline-iCSD method. Default is 'standard'
+    :param diam: : Quantity float
+        Diamater of the assumed circular planar current sources centered at
+        each contact, required by iCSD methods (= 'delta', 'step',
+        'spline'). Default is `None`.
+    :param sigma_top: : Quantity float
+        Conductivity on top of tissue. When set to `None`, the same value as
+        :param sigma: is used. Default is `None`.
+    :param tol: : float
+        Tolerance of numerical integration, required by step- and
+        spline-iCSD methods. Default is 1E-6.
+    :param num_steps: : int
+        Number of data points for the spatially upsampled LFP/CSD data,
+        required by spline-iCSD method. Default is 200.
+    :param f_type: : string
+        Type of spatial filter used for smoothing of the result, either of
+        'boxcar' (uses `scipy.signal.baxcar()`), 'hamming' (
+        `scipy.signal.hamming()`), 'triangular' (`scipy.signal.tri()`),
+        'gaussian' (`scipy.signal.gaussian`), 'identity' (no smoothing is
+        applied). Default is 'identity'.
+    :param f_order: : float tuple
+        Parameters to be passed to the scipy.signal function associated with
+        the specified filter type.
+
+    Returns
+    -------
+    csd : neo.AnalogSignalArray
+        Estimated CSD
+    """
 
     supported_methods = ('standard', 'delta', 'step', 'spline')
     icsd_methods = ('delta', 'step', 'spline')
 
     if method not in supported_methods:
-        raise ValueError("method must be either of {}".format(", ".join(supported_methods)))
+        raise ValueError("Pamareter `method` must be either of {}".format(
+            ", ".join(supported_methods)))
     elif method in icsd_methods and diam is None:
-        raise ValueError("Parameter `diam` must be specified for iCSD methods: {}".format(", ".join(icsd_methods)))
+        raise ValueError(
+            "Parameter `diam` must be specified for iCSD methods: {}".format(
+                ", ".join(icsd_methods)))
 
     if not isinstance(lfp, neo.AnalogSignalArray):
-        raise TypeError('`lfp` must be neo.AnalogSignalArray')
+        raise TypeError('Parameter `lfp` must be neo.AnalogSignalArray')
 
     if f_type is not 'identity' and f_order is None:
-        raise ValueError("The order of {} filter must be specified".format(f_type))
+        raise ValueError(
+            "The order of {} filter must be specified".format(f_type))
 
     lfp_pqarr = lfp.magnitude.T * lfp.units
     if sigma_top is None:
