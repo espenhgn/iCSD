@@ -544,39 +544,50 @@ class SplineiCSD(Icsd):
         return np.array(e_mat0), np.array(e_mat1), np.array(e_mat2), np.array(e_mat3)
 
     
-def estimate_csd(lfp_ansigarr, coord_electrode,
-                 diam=500E-6, cond=0.3, cond_top=0.3, tol=1E-6,
-                 f_type='gaussian', f_order=(3, 1), num_steps=200,
-                 method='standard'):
+def estimate_csd(lfp, coord_electrode, method='standard', diam=None, cond=None,
+                 cond_top=None, tol=1E-6, num_steps=200, f_type='identity',
+                 f_order=None):
 
-    if not method in ['standard', 'delta', 'step', 'spline']:
+    if method not in ['standard', 'delta', 'step', 'spline']:
         raise ValueError("method must be either 'standard', 'delta', 'step', 'spline'")
+    elif method in ['delta', 'step', 'spline'] and None in (diam, cond):
+        raise ValueError("'diam' and 'cond' must be specified for {} iCSD".format(method))
 
-    if not isinstance(lfp_ansigarr, neo.AnalogSignalArray):
+    if not isinstance(lfp, neo.AnalogSignalArray):
         raise TypeError('LFP is not an neo.AnalogSignalArray!')
 
-    lfp = lfp_ansigarr.magnitude.T * lfp_ansigarr.units
+    if f_type is not 'identity' and f_order is None:
+        raise ValueError("The order of {} filter must be specified".format(f_type))
 
-    arg_dict = {'lfp': lfp,
+    lfp_pqarr = lfp.magnitude.T * lfp.units
+    if cond_top is None:
+        cond_top = cond
+
+    arg_dict = {'lfp': lfp_pqarr,
                 'coord_electrode': coord_electrode,
-                'diam': diam,
-                'cond': cond,
                 'cond_top': cond_top,
-                'tol': tol,
                 'f_type': f_type,
                 'f_order': f_order,
-                'num_steps': num_steps}
+                }
 
     if method == 'standard':
-        csd = StandardCSD(**arg_dict)
-    elif method == 'delta':
-        csd = DeltaiCSD(**arg_dict)
-    elif method == 'step':
-        csd = StepiCSD(**arg_dict)
-    elif method == 'spline':
-        csd = SplineiCSD(**arg_dict)
+        CSD = StandardCSD
+    else:
+        arg_dict['diam'] = diam
+        arg_dict['cond'] = cond
+        arg_dict['cond_top'] = cond_top
+        if method == 'delta':
+            CSD = DeltaiCSD
+        if method == 'step':
+            CSD = StepiCSD
+            arg_dict['tol'] = tol
+        if method == 'spline':
+            CSD = SplineiCSD
+            arg_dict['tol'] = tol
+            arg_dict['num_steps'] = num_steps
 
-    csd_ansigarr = neo.AnalogSignalArray(csd.T, t_start=lfp_ansigarr.t_start,
-                                        sampling_rate=lfp_ansigarr.sampling_rate)
+    csd = CSD(**arg_dict)
+    csd_ansigarr = neo.AnalogSignalArray(csd.T, t_start=lfp.t_start,
+                                         sampling_rate=lfp.sampling_rate)
 
     return csd_ansigarr
