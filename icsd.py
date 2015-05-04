@@ -224,8 +224,10 @@ class StandardCSD(CSD):
     '''
     Standard CSD method with and without Vaknin electrodes
     '''
+
     def __init__(self, lfp, coord_electrode=np.linspace(-700E-6, 700E-6, 15),
-                 sigma=0.3, vaknin_el=True, f_type='gaussian', f_order=(3, 1)):
+                 sigma=0.3*pq.S/pq.m, vaknin_el=True, f_type='gaussian',
+                 f_order=(3, 1)):
         '''
         Initialize standard CSD method class with and without Vaknin electrodes.
 
@@ -254,7 +256,7 @@ class StandardCSD(CSD):
 
         if vaknin_el:
             #extend array of lfps by duplicating potential at endpoint contacts
-            self.lfp = np.empty((lfp.shape[0]+2, lfp.shape[1]))
+            self.lfp = np.empty((lfp.shape[0]+2, lfp.shape[1])) * lfp.units
             self.lfp[0, ] = lfp[0, ]
             self.lfp[1:-1, ] = lfp
             self.lfp[-1, ] = lfp[-1, ]
@@ -268,11 +270,11 @@ class StandardCSD(CSD):
         '''Calculate the inverse F-matrix for the standard CSD method'''
         h_val = abs(np.diff(self.coord_electrode)[0])
 
-        f_inv = -np.eye(self.lfp.shape[0]) * pq.A / pq.m
+        f_inv = -np.eye(self.lfp.shape[0])
 
         #Inner matrix elements  is just the discrete laplacian coefficients
         for j in range(1, f_inv.shape[0]-1):
-            f_inv[j, j-1:j+2] = np.array([1., -2., 1.]) * pq.A / pq.m
+            f_inv[j, j-1:j+2] = np.array([1., -2., 1.])
 
         return f_inv * -self.sigma / h_val**2
 
@@ -280,6 +282,10 @@ class StandardCSD(CSD):
     def get_csd(self):
         '''Perform the iCSD calculation, i.e: iCSD=F_inv*LFP'''
         csd = np.dot(self.f_inv_matrix, self.lfp)[1:-1, ]
+        # `np.dot()` does not return correct units, so the units of `csd` must
+        # be assigned manually
+        csd_units = (self.f_inv_matrix.units * self.lfp.units).simplified
+        csd = csd.magnitude * csd_units
         self.lfp = self.lfp[1:-1, ]
 
         return csd
