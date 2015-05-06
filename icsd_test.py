@@ -43,7 +43,7 @@ spline_input = {
     'diam' : diam,
     'sigma' : sigma,
     'sigma_top' : sigma,
-    'num_steps' : 201,      # Spatial CSD upsampling to N steps
+    'num_steps' : 200,      # Spatial CSD upsampling to N steps
     'tol' : 1E-12,
     'f_type' : 'gaussian',
     'f_order' : (20, 5),
