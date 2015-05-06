@@ -79,6 +79,7 @@ spline_input = {
 std_input = {
     'lfp' : lfp_data,
     'coord_electrode' : z_data,
+    'sigma' : sigma,
     'f_type' : 'gaussian',
     'f_order' : (3, 1),
 }
@@ -159,7 +160,7 @@ class CSD(object):
         '''
         self.name = 'CSD estimate parent class'
         self.lfp = lfp
-        self.f_matrix = np.eye(lfp.shape[0]) * pq.m**3 * pq.S*-1
+        self.f_matrix = np.eye(lfp.shape[0]) * pq.m**3 / pq.S
         self.f_type = f_type
         self.f_order = f_order
 
@@ -256,7 +257,10 @@ class StandardCSD(CSD):
 
         if vaknin_el:
             #extend array of lfps by duplicating potential at endpoint contacts
-            self.lfp = np.empty((lfp.shape[0]+2, lfp.shape[1])) * lfp.units
+            if lfp.ndim == 1:
+                self.lfp = np.empty((lfp.shape[0]+2, )) * lfp.units
+            else:                
+                self.lfp = np.empty((lfp.shape[0]+2, lfp.shape[1])) * lfp.units
             self.lfp[0, ] = lfp[0, ]
             self.lfp[1:-1, ] = lfp
             self.lfp[-1, ] = lfp[-1, ]
@@ -276,7 +280,7 @@ class StandardCSD(CSD):
         for j in range(1, f_inv.shape[0]-1):
             f_inv[j, j-1:j+2] = np.array([1., -2., 1.])
 
-        return f_inv * -self.sigma / h_val**2
+        return f_inv * -self.sigma / h_val
 
 
     def get_csd(self):
@@ -326,6 +330,12 @@ class DeltaiCSD(CSD):
         '''
         CSD.__init__(self, lfp)
 
+        try:
+            assert(diam.units == coord_electrode.units)
+        except AssertionError as ae:
+            raise ae, 'units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
+                                                                                  diam.units)
+
         self.name = 'delta-iCSD method'
         self.coord_electrode = coord_electrode
         self.diam = diam
@@ -343,22 +353,22 @@ class DeltaiCSD(CSD):
 
     def get_f_matrix(self):
         '''Calculate the F-matrix'''
-        h_val = abs(np.diff(self.coord_electrode)[0])
-
         f_matrix = np.empty((self.coord_electrode.size,
-                             self.coord_electrode.size))
+                             self.coord_electrode.size))*self.coord_electrode.units
         for j in range(self.coord_electrode.size):
             for i in range(self.coord_electrode.size):
-                f_matrix[j, i] = h_val / (2 * self.sigma) * \
-                    ((np.sqrt((self.coord_electrode[j] - \
-                    self.coord_electrode[i])**2 + (self.diam / 2)**2) - \
-                    abs(self.coord_electrode[j] - self.coord_electrode[i])) +\
-                    (self.sigma - self.sigma_top) / (self.sigma + self.sigma_top) *\
-                    (np.sqrt((self.coord_electrode[j] + \
-                    self.coord_electrode[i])**2 + (self.diam / 2)**2) - \
+                f_matrix[j, i] = ((np.sqrt((self.coord_electrode[j] -
+                                            self.coord_electrode[i])**2 +
+                    (self.diam / 2)**2) - abs(self.coord_electrode[j] -
+                                              self.coord_electrode[i])) + 
+                    (self.sigma - self.sigma_top) / (self.sigma +
+                                                     self.sigma_top) *
+                    (np.sqrt((self.coord_electrode[j] +
+                              self.coord_electrode[i])**2 + (self.diam / 2)**2)- 
                     abs(self.coord_electrode[j] + self.coord_electrode[i])))
 
-        return f_matrix / self.sigma.units * h_val.units**2
+        f_matrix /= (2 * self.sigma)
+        return f_matrix
 
 
 class StepiCSD(CSD):
@@ -395,6 +405,13 @@ class StepiCSD(CSD):
         '''
         CSD.__init__(self, lfp, f_type, f_order)
 
+        try:
+            assert(diam.units == coord_electrode.units)
+        except AssertionError as ae:
+            raise ae, 'units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
+                                                                                  diam.units)
+
+
         self.name = 'step-iCSD method'
         self.coord_electrode = coord_electrode
         self.diam = diam
@@ -421,7 +438,7 @@ class StepiCSD(CSD):
                     if self.coord_electrode[i] - h_val/2 > 0:
                         lower_int = self.coord_electrode[i] - h_val/2
                     else:
-                        lower_int = h_val.unit
+                        lower_int = h_val.units
                 if i != el_len-1:
                     upper_int = self.coord_electrode[i] + \
                         (self.coord_electrode[i + 1] - \
@@ -492,6 +509,12 @@ class SplineiCSD(CSD):
 
         '''
         CSD.__init__(self, lfp, f_type, f_order)
+
+        try:
+            assert(diam.units == coord_electrode.units)
+        except AssertionError as ae:
+            raise ae, 'units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
+                                                                                  diam.units)
 
         self.name = 'spline-iCSD method'
         self.coord_electrode = coord_electrode

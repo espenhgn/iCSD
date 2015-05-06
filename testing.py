@@ -2,6 +2,7 @@
 
 import os
 import numpy as np
+import numpy.testing as nt
 import quantities as pq
 import scipy.integrate as si
 import icsd
@@ -34,8 +35,11 @@ def potential_of_plane(z_j, z_i=0.*pq.m,
     large distances
     
     '''
-    if z_j.units != z_i.units:
-        raise ValueError, 'units of z_j ({}) and z_i ({}) not equal'.format(z_j.units, z_i.units)
+    try:
+        assert(z_j.units == z_i.units)
+    except AssertionError as ae:
+        raise ae, 'units of z_j ({}) and z_i ({}) not equal'.format(z_j.units,
+                                                                    z_i.units)
     
     return -C_i/(2*sigma)*abs(z_j-z_i).simplified
 
@@ -62,17 +66,20 @@ def potential_of_disk(z_j,
     sigma : float*pq.S/pq.m
         conductivity of medium in units of S/m
     '''
-    if z_j.units != z_i.units or z_j.units != R_i.units or R_i.units != z_i.units:
-        raise ValueError, 'units of z_j ({}), z_i ({}) and R_i ({}) not equal'.format(z_j.units, z_i.units, R_i.units)
+    try:
+        assert(z_j.units == z_i.units == R_i.units)
+    except AssertionError as ae:
+        raise ae, 'units of z_j ({}), z_i ({}) and R_i ({}) not equal'.format(
+            z_j.units, z_i.units, R_i.units)
     
     return C_i/(2*sigma)*(np.sqrt((z_j-z_i)**2 + R_i**2) - abs(z_j-z_i)).simplified
 
 
 def potential_of_cylinder(z_j,
                           z_i=0.*pq.m,
-                          h_i=0.1*pq.m,
                           C_i=1*pq.A/pq.m**3,
                           R_i=1E-3*pq.m,
+                          h_i=0.1*pq.m,
                           sigma=0.3*pq.S/pq.m,
                           ):
     '''
@@ -108,8 +115,11 @@ def potential_of_cylinder(z_j,
 
 
     '''
-    if not z_j.units == z_i.units == R_i.units == h_i.units:
-        raise ValueError, 'units of z_j ({}), z_i ({}), R_i ({}) and h ({}) not equal'.format(z_j.units, z_i.units, R_i.units, h_i.units)
+    try:
+        assert(z_j.units == z_i.units == R_i.units == h_i.units)
+    except AssertionError as ae:
+        raise ae, 'units of z_j ({}), z_i ({}), R_i ({}) and h ({}) not equal'.format(
+            z_j.units, z_i.units, R_i.units, h_i.units)
 
 
     #evaluate integrand using quad
@@ -118,7 +128,7 @@ def potential_of_cylinder(z_j,
         return 1/(2*sigma)*(np.sqrt((z-z_j)**2 + R_i**2) - abs(z-z_j))
         
     phi_j, abserr = C_i*si.quad(integrand, z_i-h_i/2, z_i+h_i/2)
-    print('quad absolute error {}'.format(abserr))
+    #print('quad absolute error {}'.format(abserr))
     
     return (phi_j * z_i.units**2 / sigma.units)
 
@@ -127,7 +137,8 @@ def potential_of_cylinder(z_j,
 def get_lfp_of_planes(z_j=np.arange(21)*1E-4*pq.m,
                       z_i=np.array([8E-4, 10E-4, 12E-4])*pq.m,
                       C_i=np.array([-.5, 1., -.5])*pq.A/pq.m**2,
-                      sigma=0.3*pq.S/pq.m):
+                      sigma=0.3*pq.S/pq.m,
+                      plot=True):
     '''
     Compute the lfp of spatially separated planes with given current source
     density
@@ -138,34 +149,37 @@ def get_lfp_of_planes(z_j=np.arange(21)*1E-4*pq.m,
             phi_j[j] += potential_of_plane(zj, zi, C_i[i], sigma)
     
     #test plot
-    plt.figure()
-    plt.subplot(121)
-    ax = plt.gca()
-    ax.plot(np.zeros(z_j.size), z_j, 'r-o')
-    for i, C in enumerate(C_i):
-        ax.plot((0, C), (z_i[i], z_i[i]), 'r-o')
-    ax.set_ylim(z_j.min(), z_j.max())
-    ax.set_ylabel('z_j ({})'.format(z_j.units))
-    ax.set_xlabel('C_i ({})'.format(C_i.units))
-    ax.set_title('planar CSD')
-
-    plt.subplot(122)
-    ax = plt.gca()
-    ax.plot(phi_j, z_j, 'r-o')
-    ax.set_ylim(z_j.min(), z_j.max())
-    ax.set_xlabel('phi_j ({})'.format(phi_j.units))
-    ax.set_title('LFP')
+    if plot:
+        plt.figure()
+        plt.subplot(121)
+        ax = plt.gca()
+        ax.plot(np.zeros(z_j.size), z_j, 'r-o')
+        for i, C in enumerate(C_i):
+            ax.plot((0, C), (z_i[i], z_i[i]), 'r-o')
+        ax.set_ylim(z_j.min(), z_j.max())
+        ax.set_ylabel('z_j ({})'.format(z_j.units))
+        ax.set_xlabel('C_i ({})'.format(C_i.units))
+        ax.set_title('planar CSD')
+    
+        plt.subplot(122)
+        ax = plt.gca()
+        ax.plot(phi_j, z_j, 'r-o')
+        ax.set_ylim(z_j.min(), z_j.max())
+        ax.set_xlabel('phi_j ({})'.format(phi_j.units))
+        ax.set_title('LFP')
     
     return phi_j, C_i
 
 
 def get_lfp_of_disks(z_j=np.arange(21)*1E-4*pq.m,
-                         z_i=np.array([8E-4, 10E-4, 12E-4])*pq.m,
-                         C_i=np.array([-.5, 1., -.5])*pq.A/pq.m**2,
-                         R_i = np.array([1, 1, 1])*1E-3*pq.m,
-                         sigma=0.3*pq.S/pq.m):
+                     z_i=np.array([8E-4, 10E-4, 12E-4])*pq.m,
+                     C_i=np.array([-.5, 1., -.5])*pq.A/pq.m**2,
+                     R_i = np.array([1, 1, 1])*1E-3*pq.m,
+                     sigma=0.3*pq.S/pq.m,
+                     plot=True):
     '''
-    Compute the lfp of spatially separated disks with a given current source density
+    Compute the lfp of spatially separated disks with a given
+    current source density
     '''
     phi_j = np.zeros(z_j.size)*pq.V
     for i, zi in enumerate(z_i):
@@ -173,63 +187,70 @@ def get_lfp_of_disks(z_j=np.arange(21)*1E-4*pq.m,
             phi_j[j] += potential_of_disk(zj, zi, C_i[i], R_i[i], sigma)
     
     #test plot
-    plt.figure()
-    plt.subplot(121)
-    ax = plt.gca()
-    ax.plot(np.zeros(z_j.size), z_j, 'r-o')
-    for i, C in enumerate(C_i):
-        ax.plot((0, C), (z_i[i], z_i[i]), 'r-o')
-    ax.set_ylim(z_j.min(), z_j.max())
-    ax.set_ylabel('z_j ({})'.format(z_j.units))
-    ax.set_xlabel('C_i ({})'.format(C_i.units))
-    ax.set_title('disk CSD\nR={}'.format(R_i))
-
-    plt.subplot(122)
-    ax = plt.gca()
-    ax.plot(phi_j, z_j, 'r-o')
-    ax.set_ylim(z_j.min(), z_j.max())
-    ax.set_xlabel('phi_j ({})'.format(phi_j.units))
-    ax.set_title('LFP')
+    if plot:
+        plt.figure()
+        plt.subplot(121)
+        ax = plt.gca()
+        ax.plot(np.zeros(z_j.size), z_j, 'r-o')
+        for i, C in enumerate(C_i):
+            ax.plot((0, C), (z_i[i], z_i[i]), 'r-o')
+        ax.set_ylim(z_j.min(), z_j.max())
+        ax.set_ylabel('z_j ({})'.format(z_j.units))
+        ax.set_xlabel('C_i ({})'.format(C_i.units))
+        ax.set_title('disk CSD\nR={}'.format(R_i))
+    
+        plt.subplot(122)
+        ax = plt.gca()
+        ax.plot(phi_j, z_j, 'r-o')
+        ax.set_ylim(z_j.min(), z_j.max())
+        ax.set_xlabel('phi_j ({})'.format(phi_j.units))
+        ax.set_title('LFP')
     
     return phi_j, C_i
     
 
 def get_lfp_of_cylinders(z_j=np.arange(21)*1E-4*pq.m,
                          z_i=np.array([8E-4, 10E-4, 12E-4])*pq.m,
-                         h_i=np.array([1, 1, 1])*1E-4*pq.m,
                          C_i=np.array([-.5, 1., -.5])*pq.A/pq.m**3,
                          R_i = np.array([1, 1, 1])*1E-3*pq.m,
-                         sigma=0.3*pq.S/pq.m):
+                         h_i=np.array([1, 1, 1])*1E-4*pq.m,
+                         sigma=0.3*pq.S/pq.m,
+                         plot=True):
     '''
-    Compute the lfp of spatially separated disks with a given current source density
+    Compute the lfp of spatially separated disks with a given
+    current source density
     '''
     phi_j = np.zeros(z_j.size)*pq.V
     for i, zi in enumerate(z_i):
         for j, zj in enumerate(z_j):
-            phi_j[j] += potential_of_cylinder(zj, zi, h_i[i], C_i[i], R_i[i], sigma)
+            phi_j[j] += potential_of_cylinder(zj, zi, C_i[i], R_i[i], h_i[i], sigma)
     
     #test plot
-    plt.figure()
-    plt.subplot(121)
-    ax = plt.gca()
-    ax.plot(np.zeros(z_j.size), z_j, 'r-o')
-    ax.barh(np.asarray(z_i-h_i/2),
-            np.asarray(C_i),
-            np.asarray(h_i), color='r')
-    ax.set_ylim(z_j.min(), z_j.max())
-    ax.set_ylabel('z_j ({})'.format(z_j.units))
-    ax.set_xlabel('C_i ({})'.format(C_i.units))
-    ax.set_title('cylinder CSD\nR={}'.format(R_i))
-
-    plt.subplot(122)
-    ax = plt.gca()
-    ax.plot(phi_j, z_j, 'r-o')
-    ax.set_ylim(z_j.min(), z_j.max())
-    ax.set_xlabel('phi_j ({})'.format(phi_j.units))
-    ax.set_title('LFP')
+    if plot:
+        plt.figure()
+        plt.subplot(121)
+        ax = plt.gca()
+        ax.plot(np.zeros(z_j.size), z_j, 'r-o')
+        ax.barh(np.asarray(z_i-h_i/2),
+                np.asarray(C_i),
+                np.asarray(h_i), color='r')
+        ax.set_ylim(z_j.min(), z_j.max())
+        ax.set_ylabel('z_j ({})'.format(z_j.units))
+        ax.set_xlabel('C_i ({})'.format(C_i.units))
+        ax.set_title('cylinder CSD\nR={}'.format(R_i))
+    
+        plt.subplot(122)
+        ax = plt.gca()
+        ax.plot(phi_j, z_j, 'r-o')
+        ax.set_ylim(z_j.min(), z_j.max())
+        ax.set_xlabel('phi_j ({})'.format(phi_j.units))
+        ax.set_title('LFP')
     
     return phi_j, C_i
     
+
+
+
 
 
 class TestICSD(unittest.TestCase):
@@ -239,14 +260,133 @@ class TestICSD(unittest.TestCase):
     '''
     
     def test_StandardCSD(self):
-        raise NotImplementedError
+        #set some parameters for ground truth csd and csd estimates., e.g.,
+        #we will use same source diameter as in ground truth
+        
+        #contact point coordinates
+        z_j = np.arange(21)*1E-4*pq.m
+        
+        #source coordinates
+        z_i = z_j
+        
+        #current source density magnitude
+        C_i = np.zeros(z_i.size)*pq.A/pq.m**2
+        C_i[7:12:2] += np.array([-.5, 1., -.5])*pq.A/pq.m**2
+                
+        #conductivity, use same conductivity for top layer (z_j < 0)
+        sigma = 0.3*pq.S/pq.m
+        
+        #flag for debug plots
+        plot = False
+        
+        #get LFP and CSD at contacts
+        phi_j, C_i = get_lfp_of_planes(z_j, z_i, C_i, sigma,
+                                       plot)
+        std_input = {
+            'lfp' : phi_j,
+            'coord_electrode' : z_j,
+            'sigma' : sigma,
+            'f_type' : 'gaussian',
+            'f_order' : (3, 1),
+        }
+        std_csd = icsd.StandardCSD(**std_input)
+        csd = std_csd.get_csd()
+        
+        self.assertEqual(C_i.units, csd.units)
+        nt.assert_array_almost_equal(C_i, csd)
     
     def test_DeltaiCSD(self):
-        raise NotImplementedError
+        #set some parameters for ground truth csd and csd estimates., e.g.,
+        #we will use same source diameter as in ground truth
+        
+        #contact point coordinates
+        z_j = np.arange(21)*1E-4*pq.m
+        
+        #source coordinates
+        z_i = z_j
+        
+        #current source density magnitude
+        C_i = np.zeros(z_i.size)*pq.A/pq.m**2
+        C_i[7:12:2] += np.array([-.5, 1., -.5])*pq.A/pq.m**2
+        
+        #source radius (delta, step)
+        R_i = np.ones(z_i.size)*1E-3*pq.m
+        
+        #conductivity, use same conductivity for top layer (z_j < 0)
+        sigma = 0.3*pq.S/pq.m
+        sigma_top = sigma
+        
+        #flag for debug plots
+        plot = False
+
+        #get LFP and CSD at contacts
+        phi_j, C_i = get_lfp_of_disks(z_j, z_i, C_i, R_i, sigma,
+                                      plot)
+        delta_input = {
+            'lfp' : phi_j,
+            'coord_electrode' : z_j,
+            'diam' : R_i.mean()*2,        # source diameter
+            'sigma' : sigma,           # extracellular conductivity
+            'sigma_top' : sigma_top,       # conductivity on top of cortex
+            'f_type' : 'gaussian',  # gaussian filter
+            'f_order' : (3, 1),     # 3-point filter, sigma = 1.
+        }
+        
+        delta_icsd = icsd.DeltaiCSD(**delta_input)
+        csd = delta_icsd.get_csd()
+        
+        self.assertEqual(C_i.units, csd.units)
+        nt.assert_array_almost_equal(C_i, csd)
+
     
     def test_StepiCSD(self):
-        raise NotImplementedError
-    
+        #set some parameters for ground truth csd and csd estimates., e.g.,
+        #we will use same source diameter as in ground truth
+        
+        #contact point coordinates
+        z_j = np.arange(21)*1E-4*pq.m
+        
+        #source coordinates
+        z_i = z_j
+        
+        #current source density magnitude
+        C_i = np.zeros(z_i.size)*pq.A/pq.m**3
+        C_i[7:12:2] += np.array([-.5, 1., -.5])*pq.A/pq.m**3
+        
+        #source radius (delta, step)
+        R_i = np.ones(z_i.size)*1E-3*pq.m
+        
+        #source height (cylinder)
+        h_i = np.ones(z_i.size)*1E-4*pq.m
+        
+        #conductivity, use same conductivity for top layer (z_j < 0)
+        sigma = 0.3*pq.S/pq.m
+        sigma_top = sigma
+        
+        #flag for debug plots
+        plot = False
+
+        #get LFP and CSD at contacts
+        phi_j, C_i = get_lfp_of_cylinders(z_j, z_i, C_i, R_i, h_i,
+                                          sigma, plot)
+
+        step_input = {
+            'lfp' : phi_j,
+            'coord_electrode' : z_j,
+            'diam' : R_i.mean()*2,
+            'sigma' : sigma,
+            'sigma_top' : sigma,
+            #'h' : h_i,
+            'tol' : 1E-12,          # Tolerance in numerical integration
+            'f_type' : 'gaussian',
+            'f_order' : (3, 1),
+        }
+        step_icsd = icsd.StepiCSD(**step_input)
+        csd = step_icsd.get_csd()
+        
+        self.assertEqual(C_i.units, csd.units)
+        nt.assert_array_almost_equal(C_i, csd)
+            
     def test_SplineiCSD(self):
         raise NotImplementedError
 
@@ -275,14 +415,11 @@ if __name__ == '__main__':
     #run test function
     test()
     
-    #print potential_of_cylinder(0*pq.m)
-    #print potential_of_disk(0*pq.m)
-    #print potential_of_plane(0*pq.m)
-    
+    #show some test plots
     plt.close('all')
-
+        
     phi_j, C_i = get_lfp_of_planes()
-    get_lfp_of_disks()
-    get_lfp_of_cylinders()
+    phi_j, C_i = get_lfp_of_disks()
+    phi_j, C_i = get_lfp_of_cylinders()
     
     plt.show()

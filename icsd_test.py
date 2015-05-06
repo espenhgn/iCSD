@@ -51,6 +51,7 @@ spline_input = {
 std_input = {
     'lfp' : lfp_data,
     'coord_electrode' : z_data,
+    'sigma' : sigma,
     'f_type' : 'gaussian',
     'f_order' : (3, 1),
 }
