@@ -121,14 +121,17 @@ def potential_of_cylinder(z_j,
         raise ae, 'units of z_j ({}), z_i ({}), R_i ({}) and h ({}) not equal'.format(
             z_j.units, z_i.units, R_i.units, h_i.units)
 
+    #speed up tests by stripping units
+    _sigma = float(sigma)
+    _R_i = float(R_i)
+    _z_i = float(z_i)
+    _z_j = float(z_j)
 
     #evaluate integrand using quad
     def integrand(z):
-        z *= z_i.units
-        return 1/(2*sigma)*(np.sqrt((z-z_j)**2 + R_i**2) - abs(z-z_j))
+        return 1/(2*_sigma)*(np.sqrt((z-_z_j)**2 + _R_i**2) - abs(z-_z_j))
         
     phi_j, abserr = C_i*si.quad(integrand, z_i-h_i/2, z_i+h_i/2)
-    #print('quad absolute error {}'.format(abserr))
     
     return (phi_j * z_i.units**2 / sigma.units)
 

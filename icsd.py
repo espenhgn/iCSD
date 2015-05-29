@@ -227,7 +227,7 @@ class StandardCSD(CSD):
     '''
 
     def __init__(self, lfp,
-                 coord_electrode=np.linspace(-700E-6, 700E-6, 15)*pq.m,
+                 coord_electrode=np.linspace(0, 1400E-6, 15)*pq.m,
                  sigma=0.3*pq.S/pq.m, vaknin_el=True, f_type='gaussian',
                  f_order=(3, 1)):
         '''
@@ -306,7 +306,7 @@ class DeltaiCSD(CSD):
     delta-iCSD method
     '''
     def __init__(self, lfp,
-                 coord_electrode=np.linspace(-700E-6, 700E-6, 15)*pq.m,
+                 coord_electrode=np.linspace(0, 1400E-6, 15)*pq.m,
                  diam=500E-6*pq.m,
                  sigma=0.3*pq.S/pq.m,
                  sigma_top=0.3*pq.S/pq.m,
@@ -395,7 +395,7 @@ class DeltaiCSD(CSD):
 class StepiCSD(CSD):
     '''step-iCSD method'''
     def __init__(self, lfp,
-                 coord_electrode=np.linspace(-700E-6, 700E-6, 15)*pq.m,
+                 coord_electrode=np.linspace(0, 1400E-6, 15)*pq.m,
                  diam=500E-6*pq.m, sigma=0.3*pq.S/pq.m, sigma_top=0.3*pq.S/pq.m,
                  tol=1E-6,
                  f_type='gaussian', f_order=(3, 1)):
@@ -431,6 +431,20 @@ class StepiCSD(CSD):
         except AssertionError as ae:
             raise ae, 'units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
                                                                                   diam.units)
+        try:
+            assert(np.all(np.diff(coord_electrode) > 0))
+        except AssertionError as ae:
+            raise ae, 'values of coord_electrode not continously increasing'
+
+        try:
+            assert(diam.size == 1 or diam.size == coord_electrode.size)
+            if diam.size == coord_electrode.size:
+                assert(np.all(np.diff(diam) > 0*diam.units))
+        except AssertionError as ae:
+            raise ae, 'diam must be scalar or of same shape as coord_electrode'
+        
+        if diam.size == 1:
+            diam = np.ones(coord_electrode.size)*diam
 
 
         self.name = 'step-iCSD method'
@@ -471,12 +485,12 @@ class StepiCSD(CSD):
                 f_cyl0 = si.quad(self._f_cylinder,
                                  a=lower_int, b=upper_int,
                                  args=(float(self.coord_electrode[j]),
-                                       float(self.diam),
+                                       float(self.diam[j]),
                                        float(self.sigma)),
                                  epsabs=self.tol)[0]
                 f_cyl1 = si.quad(self._f_cylinder, a=lower_int, b=upper_int,
                                  args=(-float(self.coord_electrode[j]),
-                                       float(self.diam), float(self.sigma)),
+                                       float(self.diam[j]), float(self.sigma)),
                                  epsabs=self.tol)[0]
 
                 #method of images coefficient
@@ -498,7 +512,7 @@ class StepiCSD(CSD):
 class SplineiCSD(CSD):
     '''spline iCSD method'''
     def __init__(self, lfp,
-                 coord_electrode=np.linspace(-700E-6, 700E-6, 15)*pq.m,
+                 coord_electrode=np.linspace(0, 1400E-6, 15)*pq.m,
                  diam=500E-6*pq.m, sigma=0.3*pq.S/pq.m, sigma_top=0.3*pq.S/pq.m,
                  tol=1E-6,
                  f_type='gaussian', f_order=(3, 1), num_steps=200):
@@ -536,6 +550,20 @@ class SplineiCSD(CSD):
         except AssertionError as ae:
             raise ae, 'units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
                                                                                   diam.units)
+        try:
+            assert(np.all(np.diff(coord_electrode) > 0))
+        except AssertionError as ae:
+            raise ae, 'values of coord_electrode not continously increasing'
+
+        try:
+            assert(diam.size == 1 or diam.size == coord_electrode.size)
+            if diam.size == coord_electrode.size:
+                assert(np.all(np.diff(diam) > 0*diam.units))
+        except AssertionError as ae:
+            raise ae, 'diam must be scalar or of same shape as coord_electrode'
+        
+        if diam.size == 1:
+            diam = np.ones(coord_electrode.size)*diam
 
         self.name = 'spline-iCSD method'
         self.coord_electrode = coord_electrode
@@ -567,22 +595,22 @@ class SplineiCSD(CSD):
             for i in xrange(el_len):
                 f_mat0[j, i] = si.quad(self._f_mat0, a=z_js[i], b=z_js[i+1],
                                        args=(z_js[j+1], float(self.sigma),
-                                             float(self.diam)),
+                                             float(self.diam[j])),
                                        epsabs=self.tol)[0]
                 f_mat1[j, i] = si.quad(self._f_mat1, a=z_js[i], b=z_js[i+1],
                                        args=(z_js[j+1], z_js[i],
                                              float(self.sigma),
-                                             float(self.diam)),
+                                             float(self.diam[j])),
                                        epsabs=self.tol)[0]
                 f_mat2[j, i] = si.quad(self._f_mat2, a=z_js[i], b=z_js[i+1],
                                        args=(z_js[j+1], z_js[i],
                                              float(self.sigma),
-                                             float(self.diam)),
+                                             float(self.diam[j])),
                                        epsabs=self.tol)[0]
                 f_mat3[j, i] = si.quad(self._f_mat3, a=z_js[i], b=z_js[i+1],
                                        args=(z_js[j+1], z_js[i],
                                              float(self.sigma),
-                                             float(self.diam)),
+                                             float(self.diam[j])),
                                        epsabs=self.tol)[0]
                 # image technique if conductivity not constant:
                 if self.sigma != self.sigma_top:
@@ -590,23 +618,23 @@ class SplineiCSD(CSD):
                                                 (self.sigma + self.sigma_top) * \
                             si.quad(self._f_mat0, a=z_js[i], b=z_js[i+1], \
                                     args=(-z_js[j+1],
-                                          float(self.sigma), float(self.diam)), \
+                                          float(self.sigma), float(self.diam[j])), \
                                     epsabs=self.tol)[0]
                     f_mat1[j, i] = f_mat1[j, i] + (self.sigma-self.sigma_top) / \
                         (self.sigma + self.sigma_top) * \
                             si.quad(self.f_mat1, a=z_js[i], b=z_js[i+1], \
                                 args=(-z_js[j+1], z_js[i], float(self.sigma),
-                                      float(self.diam)), epsabs=self.tol)[0]
+                                      float(self.diam[j])), epsabs=self.tol)[0]
                     f_mat2[j, i] = f_mat2[j, i] + (self.sigma-self.sigma_top) / \
                         (self.sigma + self.sigma_top) * \
                             si.quad(self._f_mat2, a=z_js[i], b=z_js[i+1], \
                                 args=(-z_js[j+1], z_js[i], float(self.sigma),
-                                      float(self.diam)), epsabs=self.tol)[0]
+                                      float(self.diam[j])), epsabs=self.tol)[0]
                     f_mat3[j, i] = f_mat3[j, i] + (self.sigma-self.sigma_top) / \
                         (self.sigma + self.sigma_top) * \
                             si.quad(self._f_mat3, a=z_js[i], b=z_js[i+1], \
                                 args=(-z_js[j+1], z_js[i], float(self.sigma),
-                                      float(self.diam)), epsabs=self.tol)[0]
+                                      float(self.diam[j])), epsabs=self.tol)[0]
 
         e_mat0, e_mat1, e_mat2, e_mat3 = self._calc_e_matrices()
 
