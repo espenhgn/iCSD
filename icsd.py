@@ -351,9 +351,10 @@ class DeltaiCSD(CSD):
             assert(diam.size == 1 or diam.size == coord_electrode.size)
             if diam.size == coord_electrode.size:
                 assert(np.all(np.diff(diam) > 0*diam.units))
+            else:
+                assert(diam > 0*diam.units)
         except AssertionError as ae:
-            raise ae, 'diam must be scalar or of same shape as coord_electrode'
-        
+            raise ae, 'diam must be positive scalar or of same shape as coord_electrode'
         if diam.size == 1:
             diam = np.ones(coord_electrode.size)*diam
 
@@ -396,7 +397,9 @@ class StepiCSD(CSD):
     '''step-iCSD method'''
     def __init__(self, lfp,
                  coord_electrode=np.linspace(0, 1400E-6, 15)*pq.m,
-                 diam=500E-6*pq.m, sigma=0.3*pq.S/pq.m, sigma_top=0.3*pq.S/pq.m,
+                 diam=500E-6*pq.m,
+                 h = np.ones(15)*100E-6*pq.m,
+                 sigma=0.3*pq.S/pq.m, sigma_top=0.3*pq.S/pq.m,
                  tol=1E-6,
                  f_type='gaussian', f_order=(3, 1)):
         '''
@@ -409,9 +412,11 @@ class StepiCSD(CSD):
         coord_electrode : np.ndarray
             depth of evenly spaced electrode contact points of shape
             (# contacts, ) in units of m
-        diam : float
-            diamater of the assumed circular planar current sources centered
+        diam : float or np.ndarray
+            diameter(s) of the assumed circular planar current sources centered
             at each contact
+        h : float or np.ndarray
+            assumed thickness of the source cylinders at all or each contact
         sigma : float
             conductivity of tissue in units of S/m or 1/(ohm*m)
         sigma_top : float
@@ -440,16 +445,27 @@ class StepiCSD(CSD):
             assert(diam.size == 1 or diam.size == coord_electrode.size)
             if diam.size == coord_electrode.size:
                 assert(np.all(np.diff(diam) > 0*diam.units))
+            else:
+                assert(diam > 0*diam.units)
         except AssertionError as ae:
-            raise ae, 'diam must be scalar or of same shape as coord_electrode'
-        
+            raise ae, 'diam must be positive scalar or of same shape as coord_electrode'
         if diam.size == 1:
             diam = np.ones(coord_electrode.size)*diam
+
+        try:
+            assert(h.size == 1 or h.size == coord_electrode.size)
+            if h.size == coord_electrode.size:
+                assert(np.all(h > 0*h.units))
+        except AssertionError as ae:
+            raise ae, 'h must be scalar or of same shape as coord_electrode'
+        if h.size == 1:
+            h = np.ones(coord_electrode.size)*h
 
 
         self.name = 'step-iCSD method'
         self.coord_electrode = coord_electrode
         self.diam = diam
+        self.h = h
         self.sigma = sigma
         self.sigma_top = sigma_top
         self.tol = tol
@@ -461,7 +477,7 @@ class StepiCSD(CSD):
     def get_f_matrix(self):
         '''Calculate F-matrix for step iCSD method'''
         el_len = self.coord_electrode.size
-        h_val = abs(np.diff(self.coord_electrode)[0])
+        ####h_val = abs(np.diff(self.coord_electrode)[0])
         f_matrix = np.zeros((el_len, el_len))
         for j in xrange(el_len):
             for i in xrange(el_len):
@@ -470,16 +486,16 @@ class StepiCSD(CSD):
                         (self.coord_electrode[i] - \
                          self.coord_electrode[i - 1]) / 2
                 else:
-                    if self.coord_electrode[i] - h_val/2 > 0:
-                        lower_int = self.coord_electrode[i] - h_val/2
+                    if self.coord_electrode[i] - self.h[j]/2 > 0:
+                        lower_int = self.coord_electrode[i] - self.h[j]/2
                     else:
-                        lower_int = h_val.units
+                        lower_int = self.h[j].units
                 if i != el_len-1:
                     upper_int = self.coord_electrode[i] + \
                         (self.coord_electrode[i + 1] - \
                          self.coord_electrode[i]) / 2
                 else:
-                    upper_int = self.coord_electrode[i] + h_val / 2
+                    upper_int = self.coord_electrode[i] + self.h[j] / 2
 
                 #components of f_matrix object
                 f_cyl0 = si.quad(self._f_cylinder,
@@ -499,7 +515,7 @@ class StepiCSD(CSD):
                 f_matrix[j, i] = f_cyl0 + mom*f_cyl1
 
         #assume si.quad trash the units
-        return f_matrix * h_val.units**2 / self.sigma.units
+        return f_matrix * self.h.units**2 / self.sigma.units
 
 
     def _f_cylinder(self, zeta, z_val, diam, sigma):
@@ -561,7 +577,6 @@ class SplineiCSD(CSD):
                 assert(np.all(np.diff(diam) > 0*diam.units))
         except AssertionError as ae:
             raise ae, 'diam must be scalar or of same shape as coord_electrode'
-        
         if diam.size == 1:
             diam = np.ones(coord_electrode.size)*diam
 

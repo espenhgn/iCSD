@@ -379,7 +379,7 @@ class TestICSD(unittest.TestCase):
             'diam' : R_i.mean()*2,
             'sigma' : sigma,
             'sigma_top' : sigma,
-            #'h' : h_i,
+            'h' : h_i,
             'tol' : 1E-12,          # Tolerance in numerical integration
             'f_type' : 'gaussian',
             'f_order' : (3, 1),

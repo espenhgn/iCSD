@@ -14,6 +14,7 @@ test_data = io.loadmat('test_data.mat')
 lfp_data = test_data['pot1'] * 1E-3 * pq.V        # [mV] -> [V]
 z_data = np.linspace(100E-6, 2300E-6, 23) * pq.m  # [m]
 diam = 500E-6 * pq.m                              # [m]
+h = 100E-6 * pq.m                                 # [m]
 sigma = 0.3 * pq.S / pq.m                         # [S/m] or [1/(ohm*m)]
 sigma_top = 0. * pq.S / pq.m                      # [S/m] or [1/(ohm*m)]
 
@@ -31,6 +32,7 @@ step_input = {
     'lfp' : lfp_data,
     'coord_electrode' : z_data,
     'diam' : diam,
+    'h' : h,
     'sigma' : sigma,
     'sigma_top' : sigma,
     'tol' : 1E-12,          # Tolerance in numerical integration
