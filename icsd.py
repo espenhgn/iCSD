@@ -226,7 +226,8 @@ class StandardCSD(CSD):
     Standard CSD method with and without Vaknin electrodes
     '''
 
-    def __init__(self, lfp, coord_electrode=np.linspace(-700E-6, 700E-6, 15),
+    def __init__(self, lfp,
+                 coord_electrode=np.linspace(-700E-6, 700E-6, 15)*pq.m,
                  sigma=0.3*pq.S/pq.m, vaknin_el=True, f_type='gaussian',
                  f_order=(3, 1)):
         '''
@@ -238,7 +239,7 @@ class StandardCSD(CSD):
             LFP signal of shape (# channels, # time steps) in units of V
         coord_electrode : np.ndarray
             depth of evenly spaced electrode contact points of shape
-            (# contacts, ) in units of m
+            (# contacts, ) in units of m, must be monotonously increasing
         sigma : float
             conductivity of tissue in units of S/m or 1/(ohm*m)
         vaknin_el : bool
@@ -254,6 +255,11 @@ class StandardCSD(CSD):
         self.coord_electrode = coord_electrode
         self.sigma = sigma
         self.vaknin_el = vaknin_el
+        
+        try:
+            assert(np.all(np.diff(np.diff(coord_electrode)))==0)
+        except AssertionError as ae:
+            raise ae, 'coord_electrode not monotonously varying'
 
         if vaknin_el:
             #extend array of lfps by duplicating potential at endpoint contacts
@@ -336,6 +342,21 @@ class DeltaiCSD(CSD):
             raise ae, 'units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
                                                                                   diam.units)
 
+        try:
+            assert(np.all(np.diff(coord_electrode) > 0))
+        except AssertionError as ae:
+            raise ae, 'values of coord_electrode not continously increasing'
+
+        try:
+            assert(diam.size == 1 or diam.size == coord_electrode.size)
+            if diam.size == coord_electrode.size:
+                assert(np.all(np.diff(diam) > 0*diam.units))
+        except AssertionError as ae:
+            raise ae, 'diam must be scalar or of same shape as coord_electrode'
+        
+        if diam.size == 1:
+            diam = np.ones(coord_electrode.size)*diam
+
         self.name = 'delta-iCSD method'
         self.coord_electrode = coord_electrode
         self.diam = diam
@@ -359,12 +380,12 @@ class DeltaiCSD(CSD):
             for i in range(self.coord_electrode.size):
                 f_matrix[j, i] = ((np.sqrt((self.coord_electrode[j] -
                                             self.coord_electrode[i])**2 +
-                    (self.diam / 2)**2) - abs(self.coord_electrode[j] -
+                    (self.diam[j] / 2)**2) - abs(self.coord_electrode[j] -
                                               self.coord_electrode[i])) + 
                     (self.sigma - self.sigma_top) / (self.sigma +
                                                      self.sigma_top) *
                     (np.sqrt((self.coord_electrode[j] +
-                              self.coord_electrode[i])**2 + (self.diam / 2)**2)- 
+                              self.coord_electrode[i])**2 + (self.diam[j] / 2)**2)- 
                     abs(self.coord_electrode[j] + self.coord_electrode[i])))
 
         f_matrix /= (2 * self.sigma)
