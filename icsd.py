@@ -350,7 +350,7 @@ class DeltaiCSD(CSD):
         try:
             assert(diam.size == 1 or diam.size == coord_electrode.size)
             if diam.size == coord_electrode.size:
-                assert(np.all(np.diff(diam) > 0*diam.units))
+                assert(np.all(diam > 0*diam.units))
             else:
                 assert(diam > 0*diam.units)
         except AssertionError as ae:
@@ -444,7 +444,7 @@ class StepiCSD(CSD):
         try:
             assert(diam.size == 1 or diam.size == coord_electrode.size)
             if diam.size == coord_electrode.size:
-                assert(np.all(np.diff(diam) > 0*diam.units))
+                assert(np.all(diam > 0*diam.units))
             else:
                 assert(diam > 0*diam.units)
         except AssertionError as ae:
