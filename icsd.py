@@ -273,13 +273,13 @@ class StandardCSD(CSD):
         else:
             self.lfp = lfp
 
-        self.f_inv_matrix = self.get_inv_f_matrix()
+        self.f_inv_matrix = self.get_f_inv_matrix()
 
 
-    def get_inv_f_matrix(self):
+    def get_f_inv_matrix(self):
         '''Calculate the inverse F-matrix for the standard CSD method'''
         h_val = abs(np.diff(self.coord_electrode)[0])
-
+        
         f_inv = -np.eye(self.lfp.shape[0])
 
         #Inner matrix elements  is just the discrete laplacian coefficients
