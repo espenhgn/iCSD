@@ -597,7 +597,8 @@ class SplineiCSD(CSD):
         for j in xrange(el_len):
             for i in xrange(el_len):
                 f_mat0[j, i] = si.quad(self._f_mat0, a=z_js[i], b=z_js[i+1],
-                                       args=(z_js[j+1], float(self.sigma),
+                                       args=(z_js[j+1],
+                                             float(self.sigma),
                                              float(self.diam[j])),
                                        epsabs=self.tol)[0]
                 f_mat1[j, i] = si.quad(self._f_mat1, a=z_js[i], b=z_js[i+1],
@@ -648,13 +649,6 @@ class SplineiCSD(CSD):
                             np.dot(f_mat1, e_mat1) + \
                             np.dot(f_mat2, e_mat2) + \
                             np.dot(f_mat3, e_mat3)
-        
-        #import matplotlib.pyplot as plt
-        #plt.matshow(np.dot(f_mat0, e_mat0))
-        #plt.matshow(np.dot(f_mat1, e_mat1))
-        #plt.matshow(np.dot(f_mat2, e_mat2))
-        #plt.matshow(np.dot(f_mat3, e_mat3))
-        #plt.show()
 
         return f_matrix * self.coord_electrode.units**2 / self.sigma.units
 
@@ -671,33 +665,33 @@ class SplineiCSD(CSD):
 
         # CSD coefficients
         csd_coeff = np.linalg.solve(self.f_matrix, cs_lfp)
+        
         # The cubic spline polynomial coefficients
         a_mat0 = np.dot(e_mat[0], csd_coeff)
         a_mat1 = np.dot(e_mat[1], csd_coeff)
         a_mat2 = np.dot(e_mat[2], csd_coeff)
         a_mat3 = np.dot(e_mat[3], csd_coeff)
         
-        # Extend electrode coordinates in both end by mean interdistance
-        coord_ext = np.zeros(el_len + 2)
-        coord_ext[0] = 0
-        coord_ext[1:-1] = self.coord_electrode
-        coord_ext[-1] = self.coord_electrode[-1] + \
-            np.diff(self.coord_electrode).mean()
+        # Extend electrode coordinates in both end by min contact interdistance
+        h = np.diff(self.coord_electrode).min()
+        z_js = np.zeros(el_len + 2)
+        z_js[0] = self.coord_electrode[0] - h
+        z_js[1:-1] = self.coord_electrode
+        z_js[-1] = self.coord_electrode[-1] + h
 
         # create high res spatial grid
-        out_zs = np.linspace(coord_ext[0], coord_ext[-1], self.num_steps)
+        out_zs = np.linspace(z_js[1], z_js[-2], self.num_steps)
         csd = np.empty((self.num_steps, self.lfp.shape[1]))
         
         # Calculate iCSD estimate on grid from polynomial coefficients.
         i = 0
         for j in xrange(self.num_steps):
-            if out_zs[j] > coord_ext[i+1]:
+            if out_zs[j] >= z_js[i+1]:
                 i += 1
-            print i, j
             csd[j, :] = a_mat0[i, :] + a_mat1[i, :] * \
-                            (out_zs[j] - coord_ext[i]) +\
-                a_mat2[i, :] * (out_zs[j] - coord_ext[i])**2 + \
-                a_mat3[i, :] * (out_zs[j] - coord_ext[i])**3
+                            (out_zs[j] - z_js[i]) +\
+                a_mat2[i, :] * (out_zs[j] - z_js[i])**2 + \
+                a_mat3[i, :] * (out_zs[j] - z_js[i])**3
 
         csd_unit = (self.f_matrix.units**-1 * self.lfp.units).simplified
 
@@ -728,13 +722,9 @@ class SplineiCSD(CSD):
     def _calc_k_matrix(self):
         '''Calculate the K-matrix used by to calculate E-matrices'''
         el_len = self.coord_electrode.size
-        # expanding electrode grid
-        z_js = np.zeros(el_len+2)
-        z_js[1:-1] = self.coord_electrode
-        z_js[-1] = self.coord_electrode[-1] + \
-            np.diff(self.coord_electrode).mean()
-
-        c_vec = 1./np.diff(z_js)
+        h = float(np.diff(self.coord_electrode).min())
+        
+        c_vec = np.ones(el_len+1) / h
         # Define transformation matrices
         c_jm1 = np.zeros((el_len+2, el_len+2))
         c_j0 = np.zeros((el_len+2, el_len+2))
@@ -784,25 +774,18 @@ class SplineiCSD(CSD):
         '''Calculate the E-matrices used by cubic spline iCSD method'''
         el_len = self.coord_electrode.size
         ## expanding electrode grid
-        z_js = np.zeros(el_len+2)
-        z_js[0] = self.coord_electrode[0] - np.diff(self.coord_electrode).mean()
-        z_js[1:-1] = self.coord_electrode
-        z_js[-1] = self.coord_electrode[-1] + np.diff(self.coord_electrode).mean()
+        h = float(np.diff(self.coord_electrode).min())
 
         ## Define transformation matrices
-        c_mat3 = np.zeros((el_len+1, el_len+1))
-
-        for i in xrange(el_len+1):
-            for j in xrange(el_len+1):
-                if i == j:
-                    c_mat3[i, j] = 1./np.diff(z_js)[i]
-
+        c_mat3 = np.eye(el_len+1) / h
+        
         # Get K-matrix
         k_matrix = self._calc_k_matrix()
 
         # Define matrixes for C to A transformation:
         tja = np.eye(el_len+2)[:-1, ]
         tjp1a = np.eye(el_len+2, k=1)[:-1, ]
+        
         
         # Define spline coefficients
         e_mat0 = tja
