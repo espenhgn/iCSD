@@ -16,7 +16,7 @@ z_data = np.linspace(100E-6, 2300E-6, 23) * pq.m  # [m]
 diam = 500E-6 * pq.m                              # [m]
 h = 100E-6 * pq.m                                 # [m]
 sigma = 0.3 * pq.S / pq.m                         # [S/m] or [1/(ohm*m)]
-sigma_top = 0. * pq.S / pq.m                      # [S/m] or [1/(ohm*m)]
+sigma_top = 0.3 * pq.S / pq.m                     # [S/m] or [1/(ohm*m)]
 
 # Input dictionaries for each method
 delta_input = {
@@ -45,7 +45,7 @@ spline_input = {
     'diam' : diam,
     'sigma' : sigma,
     'sigma_top' : sigma,
-    'num_steps' : 200,      # Spatial CSD upsampling to N steps
+    'num_steps' : 201,      # Spatial CSD upsampling to N steps
     'tol' : 1E-12,
     'f_type' : 'gaussian',
     'f_order' : (20, 5),
