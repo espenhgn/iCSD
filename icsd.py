@@ -574,7 +574,7 @@ class SplineiCSD(CSD):
         try:
             assert(diam.size == 1 or diam.size == coord_electrode.size)
             if diam.size == coord_electrode.size:
-                assert(np.all(np.diff(diam) > 0*diam.units))
+                assert(np.all(diam > 0*diam.units))
         except AssertionError as ae:
             raise ae, 'diam must be scalar or of same shape as coord_electrode'
         if diam.size == 1:
@@ -595,8 +595,8 @@ class SplineiCSD(CSD):
     def get_f_matrix(self):
         '''Calculate the F-matrix for cubic spline iCSD method'''
         el_len = self.coord_electrode.size
-        z_js = np.zeros(el_len+2)
-        z_js[1:-1] = np.array(self.coord_electrode)
+        z_js = np.zeros(el_len+1)
+        z_js[:-1] = np.array(self.coord_electrode)
         z_js[-1] = z_js[-2] + float(np.diff(self.coord_electrode).mean())
 
         # Define integration matrixes
@@ -627,6 +627,7 @@ class SplineiCSD(CSD):
                                              float(self.sigma),
                                              float(self.diam[j])),
                                        epsabs=self.tol)[0]
+                
                 # image technique if conductivity not constant:
                 if self.sigma != self.sigma_top:
                     f_mat0[j, i] = f_mat0[j, i] + (self.sigma-self.sigma_top) / \
@@ -652,7 +653,7 @@ class SplineiCSD(CSD):
                                       float(self.diam[j])), epsabs=self.tol)[0]
 
         e_mat0, e_mat1, e_mat2, e_mat3 = self._calc_e_matrices()
-
+        
         # Calculate the F-matrix
         f_matrix = np.eye(el_len+2)
         f_matrix[1:-1, :] = np.dot(f_mat0, e_mat0) + \
@@ -741,10 +742,10 @@ class SplineiCSD(CSD):
 
         c_vec = 1./np.diff(z_js)
         # Define transformation matrices
-        c_jm1 = np.matrix(np.zeros((el_len+2, el_len+2)))
-        c_j0 = np.matrix(np.zeros((el_len+2, el_len+2)))
-        c_jall = np.matrix(np.zeros((el_len+2, el_len+2)))
-        c_mat3 = np.matrix(np.zeros((el_len+1, el_len+1)))
+        c_jm1 = np.zeros((el_len+2, el_len+2))
+        c_j0 = np.zeros((el_len+2, el_len+2))
+        c_jall = np.zeros((el_len+2, el_len+2))
+        c_mat3 = np.zeros((el_len+1, el_len+1))
 
         for i in xrange(el_len+1):
             for j in xrange(el_len+1):
@@ -761,9 +762,9 @@ class SplineiCSD(CSD):
 
         c_j0 = 0
 
-        tjp1 = np.matrix(np.zeros((el_len+2, el_len+2)))
-        tjm1 = np.matrix(np.zeros((el_len+2, el_len+2)))
-        tj0 = np.matrix(np.eye(el_len+2))
+        tjp1 = np.zeros((el_len+2, el_len+2))
+        tjm1 = np.zeros((el_len+2, el_len+2))
+        tj0 = np.eye(el_len+2)
         tj0[0, 0] = 0
         tj0[-1, -1] = 0
 
@@ -773,11 +774,16 @@ class SplineiCSD(CSD):
                     tjp1[i, j] = 1
                 elif i == j+1:
                     tjm1[i, j] = 1
-
+        
         # Defining K-matrix used to calculate e_mat1-3
-        return np.array((c_jm1*tjm1 + 2*c_jm1*tj0 + 2*c_jall + c_j0*tjp1)**-1 *\
-            3*(c_jm1**2 * tj0 - c_jm1**2 * tjm1 +
-               c_j0**2 * tjp1 - c_j0**2 * tj0))
+        return np.dot(np.linalg.inv(np.dot(c_jm1, tjm1) +
+                                    2*np.dot(c_jm1, tj0) +
+                                    2*c_jall +
+                                    np.dot(c_j0, tjp1)),
+                      3*(np.dot(np.dot(c_jm1, c_jm1), tj0) -
+                         np.dot(np.dot(c_jm1, c_jm1), tjm1) +
+                         np.dot(np.dot(c_j0, c_j0), tjp1) -
+                         np.dot(np.dot(c_j0, c_j0), tj0)))
 
 
     def _calc_e_matrices(self):
@@ -790,7 +796,7 @@ class SplineiCSD(CSD):
             np.diff(self.coord_electrode).mean()
 
         ## Define transformation matrices
-        c_mat3 = np.matrix(np.zeros((el_len+1, el_len+1)))
+        c_mat3 = np.zeros((el_len+1, el_len+1))
 
         for i in xrange(el_len+1):
             for j in xrange(el_len+1):
@@ -802,9 +808,9 @@ class SplineiCSD(CSD):
 
         # Define matrixes for C to A transformation:
         # identity matrix except that it cuts off last element:
-        tja = np.matrix(np.zeros((el_len+1, el_len+2)))
+        tja = np.zeros((el_len+1, el_len+2))
         # converting k_j to k_j+1 and cutting off last element:
-        tjp1a = np.matrix(np.zeros((el_len+1, el_len+2)))
+        tjp1a = np.zeros((el_len+1, el_len+2))
 
         # C to A
         for i in xrange(el_len+1):
@@ -816,14 +822,13 @@ class SplineiCSD(CSD):
 
         # Define spline coefficients
         e_mat0 = tja
-        e_mat1 = tja*k_matrix
-        e_mat2 = 3 * c_mat3**2 * (tjp1a-tja) - c_mat3 * \
-                (tjp1a + 2 * tja) * k_matrix
-        e_mat3 = 2 * c_mat3**3 * (tja-tjp1a) + c_mat3**2 * \
-                (tjp1a + tja) * k_matrix
+        e_mat1 = np.dot(tja, k_matrix)
+        e_mat2 = 3 * np.dot(c_mat3**2, (tjp1a-tja)) - \
+                            np.dot(np.dot(c_mat3, (tjp1a + 2 * tja)), k_matrix)
+        e_mat3 = 2 * np.dot(c_mat3**3, (tja-tjp1a)) + \
+                            np.dot(np.dot(c_mat3**2, (tjp1a + tja)), k_matrix)
 
-        return (np.array(e_mat0), np.array(e_mat1),
-                np.array(e_mat2), np.array(e_mat3))
+        return e_mat0, e_mat1, e_mat2, e_mat3
 
 
 def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
