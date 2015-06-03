@@ -5,6 +5,7 @@ import numpy as np
 import numpy.testing as nt
 import quantities as pq
 import scipy.integrate as si
+from scipy.interpolate import interp1d
 import icsd
 import unittest
 import matplotlib.pyplot as plt
@@ -882,7 +883,7 @@ class TestICSD(unittest.TestCase):
         nt.assert_array_almost_equal(C_i[inds], csd)
 
 
-    def test_SplineiCSD(self):
+    def test_SplineiCSD_00(self):
         '''test using standard SI units'''
         #set some parameters for ground truth csd and csd estimates., e.g.,
         #we will use same source diameter as in ground truth
@@ -896,7 +897,7 @@ class TestICSD(unittest.TestCase):
         #current source density magnitude
         C_i = np.zeros(z_i.size)*pq.A/pq.m**3
         C_i[7:12:2] += np.array([-.5, 1., -.5])*pq.A/pq.m**3
-        
+                
         #source radius (delta, step)
         R_i = np.ones(z_i.size)*1E-3*pq.m
         
@@ -906,12 +907,24 @@ class TestICSD(unittest.TestCase):
         #conductivity, use same conductivity for top layer (z_j < 0)
         sigma = 0.3*pq.S/pq.m
         sigma_top = sigma
+
+        #construct interpolators, spline method assume underlying source
+        #pattern generating LFPs that are cubic spline interpolates between
+        #contacts so we generate CSD data relying on the same assumption 
+        f_C = interp1d(z_i, C_i, kind='cubic')
+        f_R = interp1d(z_i, R_i)
+        num_steps = 201
+        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)
+        C_i_i = f_C(np.asarray(z_i_i))*C_i.units
+        R_i_i = f_R(z_i_i)*R_i.units
+
+        h_i_i = np.ones(z_i_i.size)*np.diff(z_i_i).min()
         
         #flag for debug plots
-        plot = True
+        plot = False
 
         #get LFP and CSD at contacts
-        phi_j, C_i = get_lfp_of_cylinders(z_j, z_i, C_i, R_i, h_i,
+        phi_j, C_i = get_lfp_of_cylinders(z_j, z_i_i, C_i_i, R_i_i, h_i_i,
                                           sigma, plot)
 
         spline_input = {
@@ -920,7 +933,7 @@ class TestICSD(unittest.TestCase):
             'diam' : R_i.mean()*2,
             'sigma' : sigma,
             'sigma_top' : sigma,
-            'num_steps' : 21,
+            'num_steps' : num_steps,
             'tol' : 1E-12,          # Tolerance in numerical integration
             'f_type' : 'gaussian',
             'f_order' : (3, 1),
@@ -929,13 +942,258 @@ class TestICSD(unittest.TestCase):
         csd = spline_icsd.get_csd()
         
         self.assertEqual(C_i.units, csd.units)
-        nt.assert_array_almost_equal(C_i, csd)
+        nt.assert_array_almost_equal(C_i, csd, decimal=3)
 
 
+    def test_SplineiCSD_01(self):
+        '''test using standard SI units, deep electrode coordinates'''
+        #set some parameters for ground truth csd and csd estimates., e.g.,
+        #we will use same source diameter as in ground truth
+        
+        #contact point coordinates
+        z_j = np.arange(10, 31)*1E-4*pq.m
+        
+        #source coordinates
+        z_i = z_j
+        
+        #current source density magnitude
+        C_i = np.zeros(z_i.size)*pq.A/pq.m**3
+        C_i[7:12:2] += np.array([-.5, 1., -.5])*pq.A/pq.m**3
+                
+        #source radius (delta, step)
+        R_i = np.ones(z_i.size)*1E-3*pq.m
+        
+        #source height (cylinder)
+        h_i = np.ones(z_i.size)*1E-4*pq.m
+        
+        #conductivity, use same conductivity for top layer (z_j < 0)
+        sigma = 0.3*pq.S/pq.m
+        sigma_top = sigma
+
+        #construct interpolators, spline method assume underlying source
+        #pattern generating LFPs that are cubic spline interpolates between
+        #contacts so we generate CSD data relying on the same assumption 
+        f_C = interp1d(z_i, C_i, kind='cubic')
+        f_R = interp1d(z_i, R_i)
+        num_steps = 201
+        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)
+        C_i_i = f_C(np.asarray(z_i_i))*C_i.units
+        R_i_i = f_R(z_i_i)*R_i.units
+
+        h_i_i = np.ones(z_i_i.size)*np.diff(z_i_i).min()
+        
+        #flag for debug plots
+        plot = False
+
+        #get LFP and CSD at contacts
+        phi_j, C_i = get_lfp_of_cylinders(z_j, z_i_i, C_i_i, R_i_i, h_i_i,
+                                          sigma, plot)
+
+        spline_input = {
+            'lfp' : phi_j,
+            'coord_electrode' : z_j,
+            'diam' : R_i.mean()*2,
+            'sigma' : sigma,
+            'sigma_top' : sigma,
+            'num_steps' : num_steps,
+            'tol' : 1E-12,          # Tolerance in numerical integration
+            'f_type' : 'gaussian',
+            'f_order' : (3, 1),
+        }
+        spline_icsd = icsd.SplineiCSD(**spline_input)
+        csd = spline_icsd.get_csd()
+        
+        self.assertEqual(C_i.units, csd.units)
+        nt.assert_array_almost_equal(C_i, csd, decimal=3)
 
 
+    def test_SplineiCSD_02(self):
+        '''test using non-standard SI units'''
+        #set some parameters for ground truth csd and csd estimates., e.g.,
+        #we will use same source diameter as in ground truth
+        
+        #contact point coordinates
+        z_j = np.arange(21)*1E-4*pq.m
+        
+        #source coordinates
+        z_i = z_j
+        
+        #current source density magnitude
+        C_i = np.zeros(z_i.size)*pq.A/pq.m**3
+        C_i[7:12:2] += np.array([-.5, 1., -.5])*pq.A/pq.m**3
+                
+        #source radius (delta, step)
+        R_i = np.ones(z_i.size)*1E-3*pq.m
+        
+        #source height (cylinder)
+        h_i = np.ones(z_i.size)*1E-4*pq.m
+        
+        #conductivity, use same conductivity for top layer (z_j < 0)
+        sigma = 0.3*pq.S/pq.m
+        sigma_top = sigma
+
+        #construct interpolators, spline method assume underlying source
+        #pattern generating LFPs that are cubic spline interpolates between
+        #contacts so we generate CSD data relying on the same assumption 
+        f_C = interp1d(z_i, C_i, kind='cubic')
+        f_R = interp1d(z_i, R_i)
+        num_steps = 201
+        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)
+        C_i_i = f_C(np.asarray(z_i_i))*C_i.units
+        R_i_i = f_R(z_i_i)*R_i.units
+
+        h_i_i = np.ones(z_i_i.size)*np.diff(z_i_i).min()
+        
+        #flag for debug plots
+        plot = False
+
+        #get LFP and CSD at contacts
+        phi_j, C_i = get_lfp_of_cylinders(z_j, z_i_i, C_i_i, R_i_i, h_i_i,
+                                          sigma, plot)
+
+        spline_input = {
+            'lfp' : phi_j*1E3*pq.mV/pq.V,
+            'coord_electrode' : z_j,
+            'diam' : R_i.mean()*2,
+            'sigma' : sigma,
+            'sigma_top' : sigma,
+            'num_steps' : num_steps,
+            'tol' : 1E-12,          # Tolerance in numerical integration
+            'f_type' : 'gaussian',
+            'f_order' : (3, 1),
+        }
+        spline_icsd = icsd.SplineiCSD(**spline_input)
+        csd = spline_icsd.get_csd()
+        
+        self.assertEqual(C_i.units, csd.units)
+        nt.assert_array_almost_equal(C_i, csd, decimal=3)
 
 
+    def test_SplineiCSD_03(self):
+        '''test using standard SI units'''
+        #set some parameters for ground truth csd and csd estimates., e.g.,
+        #we will use same source diameter as in ground truth
+        
+        #contact point coordinates
+        z_j = np.arange(21)*1E-4*pq.m
+        
+        #source coordinates
+        z_i = z_j
+        
+        #current source density magnitude
+        C_i = np.zeros(z_i.size)*pq.A/pq.m**3
+        C_i[7:12:2] += np.array([-.5, 1., -.5])*pq.A/pq.m**3
+                
+        #source radius (delta, step)
+        R_i = np.ones(z_i.size)*1E-3*pq.m
+        
+        #source height (cylinder)
+        h_i = np.ones(z_i.size)*1E-4*pq.m
+        
+        #conductivity, use same conductivity for top layer (z_j < 0)
+        sigma = 0.3*pq.S/pq.m
+        sigma_top = sigma
+
+        #construct interpolators, spline method assume underlying source
+        #pattern generating LFPs that are cubic spline interpolates between
+        #contacts so we generate CSD data relying on the same assumption 
+        f_C = interp1d(z_i, C_i, kind='cubic')
+        f_R = interp1d(z_i, R_i)
+        num_steps = 201
+        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)
+        C_i_i = f_C(np.asarray(z_i_i))*C_i.units
+        R_i_i = f_R(z_i_i)*R_i.units
+
+        h_i_i = np.ones(z_i_i.size)*np.diff(z_i_i).min()
+        
+        #flag for debug plots
+        plot = False
+
+        #get LFP and CSD at contacts
+        phi_j, C_i = get_lfp_of_cylinders(z_j, z_i_i, C_i_i, R_i_i, h_i_i,
+                                          sigma, plot)
+
+        spline_input = {
+            'lfp' : phi_j,
+            'coord_electrode' : z_j*1E3*pq.mm/pq.m,
+            'diam' : R_i.mean()*2*1E3*pq.mm/pq.m,
+            'sigma' : sigma,
+            'sigma_top' : sigma,
+            'num_steps' : num_steps,
+            'tol' : 1E-12,          # Tolerance in numerical integration
+            'f_type' : 'gaussian',
+            'f_order' : (3, 1),
+        }
+        spline_icsd = icsd.SplineiCSD(**spline_input)
+        csd = spline_icsd.get_csd()
+        
+        self.assertEqual(C_i.units, csd.units)
+        nt.assert_array_almost_equal(C_i, csd, decimal=3)
+        
+
+    def test_SplineiCSD_04(self):
+        '''test using standard SI units'''
+        #set some parameters for ground truth csd and csd estimates., e.g.,
+        #we will use same source diameter as in ground truth
+        
+        #contact point coordinates
+        z_j = np.arange(21)*1E-4*pq.m
+        
+        #source coordinates
+        z_i = z_j
+        
+        #current source density magnitude
+        C_i = np.zeros(z_i.size)*pq.A/pq.m**3
+        C_i[7:12:2] += np.array([-.5, 1., -.5])*pq.A/pq.m**3
+                
+        #source radius (delta, step)
+        R_i = np.ones(z_i.size)*1E-3*pq.m
+        
+        #source height (cylinder)
+        h_i = np.ones(z_i.size)*1E-4*pq.m
+        
+        #conductivity, use same conductivity for top layer (z_j < 0)
+        sigma = 0.3*pq.S/pq.m
+        sigma_top = sigma
+
+        #construct interpolators, spline method assume underlying source
+        #pattern generating LFPs that are cubic spline interpolates between
+        #contacts so we generate CSD data relying on the same assumption 
+        f_C = interp1d(z_i, C_i, kind='cubic')
+        f_R = interp1d(z_i, R_i)
+        num_steps = 201
+        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)
+        C_i_i = f_C(np.asarray(z_i_i))*C_i.units
+        R_i_i = f_R(z_i_i)*R_i.units
+
+        h_i_i = np.ones(z_i_i.size)*np.diff(z_i_i).min()
+        
+        #flag for debug plots
+        plot = False
+
+        #get LFP and CSD at contacts
+        phi_j, C_i = get_lfp_of_cylinders(z_j, z_i_i, C_i_i, R_i_i, h_i_i,
+                                          sigma, plot)
+
+        spline_input = {
+            'lfp' : phi_j,
+            'coord_electrode' : z_j,
+            'diam' : R_i.mean()*2,
+            'sigma' : sigma*1E3*pq.mS/pq.S,
+            'sigma_top' : sigma*1E3*pq.mS/pq.S,
+            'num_steps' : num_steps,
+            'tol' : 1E-12,          # Tolerance in numerical integration
+            'f_type' : 'gaussian',
+            'f_order' : (3, 1),
+        }
+        spline_icsd = icsd.SplineiCSD(**spline_input)
+        csd = spline_icsd.get_csd()
+        
+        self.assertEqual(C_i.units, csd.units)
+        nt.assert_array_almost_equal(C_i, csd, decimal=3)
+        
+        
+        
 def test(verbosity=2):
     '''
     Run unittests for the CSD toolbox

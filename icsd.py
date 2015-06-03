@@ -478,8 +478,8 @@ class StepiCSD(CSD):
         '''Calculate F-matrix for step iCSD method'''
         el_len = self.coord_electrode.size
         f_matrix = np.zeros((el_len, el_len))
-        for j in xrange(el_len):
-            for i in xrange(el_len):
+        for j in range(el_len):
+            for i in range(el_len):
                 lower_int = self.coord_electrode[i] - self.h[j]/2
                 if lower_int < 0:
                     lower_int = self.h[j].units
@@ -594,8 +594,8 @@ class SplineiCSD(CSD):
         f_mat3 = np.zeros((el_len, el_len+1))
 
         # Calc. elements
-        for j in xrange(el_len):
-            for i in xrange(el_len):
+        for j in range(el_len):
+            for i in range(el_len):
                 f_mat0[j, i] = si.quad(self._f_mat0, a=z_js[i], b=z_js[i+1],
                                        args=(z_js[j+1],
                                              float(self.sigma),
@@ -691,7 +691,7 @@ class SplineiCSD(CSD):
         
         # Calculate iCSD estimate on grid from polynomial coefficients.
         i = 0
-        for j in xrange(self.num_steps):
+        for j in range(self.num_steps):
             if out_zs[j] >= z_js[i+1]:
                 i += 1
             csd[j,] = a_mat0[i, :] + a_mat1[i, :] * \
@@ -730,41 +730,23 @@ class SplineiCSD(CSD):
         el_len = self.coord_electrode.size
         h = float(np.diff(self.coord_electrode).min())
         
-        c_vec = np.ones(el_len+1) / h
-        # Define transformation matrices
-        c_jm1 = np.zeros((el_len+2, el_len+2))
-        c_j0 = np.zeros((el_len+2, el_len+2))
-        c_jall = np.zeros((el_len+2, el_len+2))
-        c_mat3 = np.zeros((el_len+1, el_len+1))
-
-        for i in xrange(el_len+1):
-            for j in xrange(el_len+1):
-                if i == j:
-                    c_jm1[i+1, j+1] = c_vec[i]
-                    c_j0[i, j] = c_jm1[i+1, j+1]
-                    c_mat3[i, j] = c_vec[i]
-
-        c_jm1[-1, -1] = 0
-
+        c_jm1 = np.eye(el_len+2, k=0) / h
+        c_jm1[0, 0] = 0
+        
+        c_j0 = np.eye(el_len+2) / h
+        c_j0[-1, -1] = 0
+        
         c_jall = c_j0
         c_jall[0, 0] = 1
         c_jall[-1, -1] = 1
 
-        c_j0 = 0
-
-        tjp1 = np.zeros((el_len+2, el_len+2))
-        tjm1 = np.zeros((el_len+2, el_len+2))
+        tjp1 = np.eye(el_len+2, k=1)
+        tjm1 = np.eye(el_len+2, k=-1)
+        
         tj0 = np.eye(el_len+2)
         tj0[0, 0] = 0
         tj0[-1, -1] = 0
 
-        for i in xrange(1, el_len+2):
-            for j in xrange(el_len+2):
-                if i == j-1:
-                    tjp1[i, j] = 1
-                elif i == j+1:
-                    tjm1[i, j] = 1
-        
         # Defining K-matrix used to calculate e_mat1-3
         return np.dot(np.linalg.inv(np.dot(c_jm1, tjm1) +
                                     2*np.dot(c_jm1, tj0) +
@@ -992,4 +974,3 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
-
