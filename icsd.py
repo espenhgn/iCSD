@@ -657,12 +657,19 @@ class SplineiCSD(CSD):
         '''Calculate the iCSD using the spline iCSD method'''
         e_mat = self._calc_e_matrices()
 
-        [el_len, n_tsteps] = self.lfp.shape
+        el_len = self.coord_electrode.size
 
         # padding the lfp with zeros on top/bottom
-        cs_lfp = np.zeros((el_len+2, n_tsteps)) * self.lfp.units
-        cs_lfp[1:-1, :] = self.lfp
-
+        if self.lfp.ndim == 1:
+            cs_lfp = np.r_[[0], np.asarray(self.lfp), [0]].reshape(1, -1).T
+            csd = np.zeros(self.num_steps)
+        else:
+            cs_lfp = np.vstack((np.zeros(self.lfp.shape[1]),
+                                np.asarray(self.lfp),
+                                np.zeros(self.lfp.shape[1])))
+            csd = np.zeros((self.num_steps, self.lfp.shape[1]))
+        cs_lfp *= self.lfp.units
+        
         # CSD coefficients
         csd_coeff = np.linalg.solve(self.f_matrix, cs_lfp)
         
@@ -681,18 +688,17 @@ class SplineiCSD(CSD):
 
         # create high res spatial grid
         out_zs = np.linspace(z_js[1], z_js[-2], self.num_steps)
-        csd = np.empty((self.num_steps, self.lfp.shape[1]))
         
         # Calculate iCSD estimate on grid from polynomial coefficients.
         i = 0
         for j in xrange(self.num_steps):
             if out_zs[j] >= z_js[i+1]:
                 i += 1
-            csd[j, :] = a_mat0[i, :] + a_mat1[i, :] * \
+            csd[j,] = a_mat0[i, :] + a_mat1[i, :] * \
                             (out_zs[j] - z_js[i]) +\
                 a_mat2[i, :] * (out_zs[j] - z_js[i])**2 + \
                 a_mat3[i, :] * (out_zs[j] - z_js[i])**3
-
+        
         csd_unit = (self.f_matrix.units**-1 * self.lfp.units).simplified
 
         return csd * csd_unit
