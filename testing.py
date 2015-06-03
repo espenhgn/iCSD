@@ -930,7 +930,7 @@ class TestICSD(unittest.TestCase):
         spline_input = {
             'lfp' : phi_j,
             'coord_electrode' : z_j,
-            'diam' : R_i.mean()*2,
+            'diam' : R_i*2,
             'sigma' : sigma,
             'sigma_top' : sigma,
             'num_steps' : num_steps,
@@ -992,7 +992,7 @@ class TestICSD(unittest.TestCase):
         spline_input = {
             'lfp' : phi_j,
             'coord_electrode' : z_j,
-            'diam' : R_i.mean()*2,
+            'diam' : R_i*2,
             'sigma' : sigma,
             'sigma_top' : sigma,
             'num_steps' : num_steps,
@@ -1054,7 +1054,7 @@ class TestICSD(unittest.TestCase):
         spline_input = {
             'lfp' : phi_j*1E3*pq.mV/pq.V,
             'coord_electrode' : z_j,
-            'diam' : R_i.mean()*2,
+            'diam' : R_i*2,
             'sigma' : sigma,
             'sigma_top' : sigma,
             'num_steps' : num_steps,
@@ -1116,7 +1116,7 @@ class TestICSD(unittest.TestCase):
         spline_input = {
             'lfp' : phi_j,
             'coord_electrode' : z_j*1E3*pq.mm/pq.m,
-            'diam' : R_i.mean()*2*1E3*pq.mm/pq.m,
+            'diam' : R_i*2*1E3*pq.mm/pq.m,
             'sigma' : sigma,
             'sigma_top' : sigma,
             'num_steps' : num_steps,
@@ -1178,7 +1178,7 @@ class TestICSD(unittest.TestCase):
         spline_input = {
             'lfp' : phi_j,
             'coord_electrode' : z_j,
-            'diam' : R_i.mean()*2,
+            'diam' : R_i*2,
             'sigma' : sigma*1E3*pq.mS/pq.S,
             'sigma_top' : sigma*1E3*pq.mS/pq.S,
             'num_steps' : num_steps,
@@ -1191,9 +1191,8 @@ class TestICSD(unittest.TestCase):
         
         self.assertEqual(C_i.units, csd.units)
         nt.assert_array_almost_equal(C_i, csd, decimal=3)
-        
-        
-        
+
+                
 def test(verbosity=2):
     '''
     Run unittests for the CSD toolbox
