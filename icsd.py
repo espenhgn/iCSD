@@ -787,8 +787,8 @@ class SplineiCSD(CSD):
 
 
 def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
-                 sigma_top=None, tol=1E-6, num_steps=200, f_type='identity',
-                 f_order=None):
+                 h=None, sigma_top=None, tol=1E-6, num_steps=200,
+                 f_type='identity', f_order=None):
     """
     Estimates current source density (CSD) from local field potential (LFP)
     recordings from multiple depths of the cortex.
@@ -832,6 +832,8 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
     -------
     csd : neo.AnalogSignalArray
         Estimated CSD
+    csd_filtered : neo.AnalogSignalArray
+        Estimated CSD, spatially filtered
 
     Examples
     -------_
@@ -855,7 +857,7 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
     sigma = 0.3 * pq.S / pq.m                         # [S/m] or [1/(ohm*m)]
     sigma_top = 0. * pq.S / pq.m                      # [S/m] or [1/(ohm*m)]
 
-    lfp = neo.AnalogSignalArray(lfp_data.T, sampling_rate=1.0*pq.ms)
+    lfp = neo.AnalogSignalArray(lfp_data.T, sampling_rate=2.0*pq.kHz)
 
     # Input dictionaries for each method
     params = {}
@@ -960,15 +962,19 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
         else:
             arg_dict['tol'] = tol
             if method == 'step':
+                arg_dict['h'] = h
                 csd_estimator = StepiCSD(**arg_dict)
             else:
                 arg_dict['num_steps'] = num_steps
                 csd_estimator = SplineiCSD(**arg_dict)
     csd_pqarr = csd_estimator.get_csd()
+    csd_pqarr_filtered = csd_estimator.filter_csd(csd_pqarr)
     csd = neo.AnalogSignalArray(csd_pqarr.T, t_start=lfp.t_start,
                                          sampling_rate=lfp.sampling_rate)
+    csd_filtered = neo.AnalogSignalArray(csd_pqarr_filtered.T, t_start=lfp.t_start,
+                                         sampling_rate=lfp.sampling_rate)
 
-    return csd
+    return csd, csd_filtered
 
 
 if __name__ == '__main__':

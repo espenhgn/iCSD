@@ -281,7 +281,7 @@ class TestICSD(unittest.TestCase):
         sigma = 0.3*pq.S/pq.m
         
         #flag for debug plots
-        plot = False
+        plot = True
         
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_planes(z_j, z_i, C_i, sigma, plot)
@@ -317,7 +317,7 @@ class TestICSD(unittest.TestCase):
         sigma = 0.3*pq.S/pq.m
         
         #flag for debug plots
-        plot = False
+        plot = True
         
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_planes(z_j, z_i, C_i, sigma, plot)
@@ -353,7 +353,7 @@ class TestICSD(unittest.TestCase):
         sigma = 0.3*pq.S/pq.m
         
         #flag for debug plots
-        plot = False
+        plot = True
         
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_planes(z_j, z_i, C_i, sigma, plot)
@@ -389,7 +389,7 @@ class TestICSD(unittest.TestCase):
         sigma = 0.3*pq.mS/pq.m
         
         #flag for debug plots
-        plot = False
+        plot = True
         
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_planes(z_j, z_i, C_i, sigma, plot)
@@ -430,7 +430,7 @@ class TestICSD(unittest.TestCase):
         sigma_top = sigma
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_disks(z_j, z_i, C_i, R_i, sigma,
@@ -475,7 +475,7 @@ class TestICSD(unittest.TestCase):
         sigma_top = sigma
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_disks(z_j, z_i, C_i, R_i, sigma,
@@ -520,7 +520,7 @@ class TestICSD(unittest.TestCase):
         sigma_top = sigma
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_disks(z_j, z_i, C_i, R_i, sigma,
@@ -565,7 +565,7 @@ class TestICSD(unittest.TestCase):
         sigma_top = sigma
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_disks(z_j, z_i, C_i, R_i, sigma,
@@ -610,7 +610,7 @@ class TestICSD(unittest.TestCase):
         sigma_top = sigma
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_disks(z_j, z_i, C_i, R_i, sigma,
@@ -659,7 +659,7 @@ class TestICSD(unittest.TestCase):
         sigma_top = sigma
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_cylinders(z_j, z_i, C_i, R_i, h_i,
@@ -709,7 +709,7 @@ class TestICSD(unittest.TestCase):
         sigma_top = sigma
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_cylinders(z_j, z_i, C_i, R_i, h_i,
@@ -759,7 +759,7 @@ class TestICSD(unittest.TestCase):
         sigma_top = sigma
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_cylinders(z_j, z_i, C_i, R_i, h_i,
@@ -809,7 +809,7 @@ class TestICSD(unittest.TestCase):
         sigma_top = sigma
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_cylinders(z_j, z_i, C_i, R_i, h_i,
@@ -859,7 +859,7 @@ class TestICSD(unittest.TestCase):
         sigma_top = sigma
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_cylinders(z_j, z_i, C_i, R_i, h_i,
@@ -921,7 +921,7 @@ class TestICSD(unittest.TestCase):
         h_i_i = np.ones(z_i_i.size)*np.diff(z_i_i).min()
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_cylinders(z_j, z_i_i, C_i_i, R_i_i, h_i_i,
@@ -983,7 +983,7 @@ class TestICSD(unittest.TestCase):
         h_i_i = np.ones(z_i_i.size)*np.diff(z_i_i).min()
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_cylinders(z_j, z_i_i, C_i_i, R_i_i, h_i_i,
@@ -1045,7 +1045,7 @@ class TestICSD(unittest.TestCase):
         h_i_i = np.ones(z_i_i.size)*np.diff(z_i_i).min()
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_cylinders(z_j, z_i_i, C_i_i, R_i_i, h_i_i,
@@ -1107,7 +1107,7 @@ class TestICSD(unittest.TestCase):
         h_i_i = np.ones(z_i_i.size)*np.diff(z_i_i).min()
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_cylinders(z_j, z_i_i, C_i_i, R_i_i, h_i_i,
@@ -1169,7 +1169,7 @@ class TestICSD(unittest.TestCase):
         h_i_i = np.ones(z_i_i.size)*np.diff(z_i_i).min()
         
         #flag for debug plots
-        plot = False
+        plot = True
 
         #get LFP and CSD at contacts
         phi_j, C_i = get_lfp_of_cylinders(z_j, z_i_i, C_i_i, R_i_i, h_i_i,
