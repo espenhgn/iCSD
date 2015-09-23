@@ -11,8 +11,8 @@ import quantities as pq
 test_data = io.loadmat('test_data.mat')
 
 #prepare lfp data for use, by changing the units to SI and append quantities,
-#along with electrode geometry and conductivities
-lfp_data = test_data['pot2'] * 1E-6 * pq.V        # [uV] -> [V]
+#along with electrode geometry, conductivities and assumed source geometry
+lfp_data = test_data['pot1'] * 1E-6 * pq.V        # [uV] -> [V]
 z_data = np.linspace(100E-6, 2300E-6, 23) * pq.m  # [m]
 diam = 500E-6 * pq.m                              # [m]
 h = 100E-6 * pq.m                                 # [m]
@@ -23,9 +23,9 @@ sigma_top = 0.3 * pq.S / pq.m                     # [S/m] or [1/(ohm*m)]
 delta_input = {
     'lfp' : lfp_data,
     'coord_electrode' : z_data,
-    'diam' : diam,        # source diameter
-    'sigma' : sigma,           # extracellular conductivity
-    'sigma_top' : sigma,       # conductivity on top of cortex
+    'diam' : diam,          # source diameter
+    'sigma' : sigma,        # extracellular conductivity
+    'sigma_top' : sigma,    # conductivity on top of cortex
     'f_type' : 'gaussian',  # gaussian filter
     'f_order' : (3, 1),     # 3-point filter, sigma = 1.
 }
@@ -33,7 +33,7 @@ step_input = {
     'lfp' : lfp_data,
     'coord_electrode' : z_data,
     'diam' : diam,
-    'h' : h,
+    'h' : h,                # source thickness
     'sigma' : sigma,
     'sigma_top' : sigma,
     'tol' : 1E-12,          # Tolerance in numerical integration
@@ -120,9 +120,9 @@ delta_input = {
     'lfp' : lfp_data,
     'coord_electrode' : z_data,
     'method' : 'delta',
-    'diam' : diam,        # source diameter
-    'sigma' : sigma,           # extracellular conductivity
-    'sigma_top' : sigma,       # conductivity on top of cortex
+    'diam' : diam,          # source diameter
+    'sigma' : sigma,        # extracellular conductivity
+    'sigma_top' : sigma,    # conductivity on top of cortex
     'f_type' : 'gaussian',  # gaussian filter
     'f_order' : (3, 1),     # 3-point filter, sigma = 1.
 }
@@ -131,7 +131,7 @@ step_input = {
     'coord_electrode' : z_data,
     'method' : 'step',
     'diam' : diam,
-    'h' : h,
+    'h' : h,                # source thickness
     'sigma' : sigma,
     'sigma_top' : sigma,
     'tol' : 1E-12,          # Tolerance in numerical integration

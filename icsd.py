@@ -5,23 +5,20 @@ Translation of the core functionality of the CSDplotter MATLAB package
 to python.
 
 The method themselves are implemented as callable subclasses of the base
-CSD class object, which incorporate the initialization of some variables,
-and a basic function for calculating the iCSD, and a general filter
+CSD class object, which sets some common attributes,
+and a basic function for calculating the iCSD, and a generic spatial filter
 implementation.
 
-The raw- and filtered CSD estimates are stored as arrays, after calling the
-classes;
-subclass.csd
-subclass.csd_filtered
+The raw- and filtered CSD estimates are returned as Quantity arrays.
 
-The CSD estimations are purely spatial processes, and doesn't care about
-the temporal resolution of the input data.
-
-Requires pylab environment to work, i.e numpy+scipy+matplotlib
+Requires pylab environment to work, i.e numpy+scipy+matplotlib, with the
+addition of quantities (http://pythonhosted.org/quantities) and
+neo (https://pythonhosted.org/neo)-
 
 Adapted from CSDplotter-0.1.1, copyrighted under General Public License,
 Klas. H. Pettersen 2005,
-by Espen.Hagen@umb.no, Nov. 2010.
+by Espen.Hagen@umb.no, 2010,
+by e.hagen@fz-juelich.de, 2015
 
 
 Example
@@ -39,19 +36,20 @@ test_data = io.loadmat('test_data.mat')
 
 #prepare lfp data for use, by changing the units to SI and append quantities,
 #along with electrode geometry and conductivities
-lfp_data = test_data['pot1'] * 1E-3 * pq.V        # [mV] -> [V]
+lfp_data = test_data['pot1'] * 1E-6 * pq.V        # [uV] -> [V]
 z_data = np.linspace(100E-6, 2300E-6, 23) * pq.m  # [m]
 diam = 500E-6 * pq.m                              # [m]
+h = 100E-6 * pq.m                                 # [m]
 sigma = 0.3 * pq.S / pq.m                         # [S/m] or [1/(ohm*m)]
-sigma_top = 0. * pq.S / pq.m                      # [S/m] or [1/(ohm*m)]
+sigma_top = 0.3 * pq.S / pq.m                     # [S/m] or [1/(ohm*m)]
 
 # Input dictionaries for each method
 delta_input = {
     'lfp' : lfp_data,
     'coord_electrode' : z_data,
-    'diam' : diam,        # source diameter
-    'sigma' : sigma,           # extracellular conductivity
-    'sigma_top' : sigma,       # conductivity on top of cortex
+    'diam' : diam,          # source diameter
+    'sigma' : sigma,        # extracellular conductivity
+    'sigma_top' : sigma,    # conductivity on top of cortex
     'f_type' : 'gaussian',  # gaussian filter
     'f_order' : (3, 1),     # 3-point filter, sigma = 1.
 }
@@ -59,6 +57,7 @@ step_input = {
     'lfp' : lfp_data,
     'coord_electrode' : z_data,
     'diam' : diam,
+    'h' : h,
     'sigma' : sigma,
     'sigma_top' : sigma,
     'tol' : 1E-12,          # Tolerance in numerical integration
@@ -92,13 +91,13 @@ csd_dict = dict(
     delta_icsd = icsd.DeltaiCSD(**delta_input),
     step_icsd = icsd.StepiCSD(**step_input),
     spline_icsd = icsd.SplineiCSD(**spline_input),
-    std_csd = icsd.StandardCSD(**std_input),
+    std_csd = icsd.StandardCSD(**std_input), 
 )
 
-
+#plot
 for method, csd_obj in csd_dict.items():
     fig, axes = plt.subplots(3,1, figsize=(8,8))
-
+    
     #plot LFP signal
     ax = axes[0]
     im = ax.imshow(np.array(lfp_data), origin='upper', vmin=-abs(lfp_data).max(), \
@@ -121,7 +120,7 @@ for method, csd_obj in csd_dict.items():
     cb.set_label('CSD (%s)' % csd.dimensionality.string)
     ax.set_xticklabels([])
     ax.set_ylabel('ch #')
-
+    
     #plot spatially filtered csd estimate
     ax = axes[2]
     csd = csd_obj.filter_csd(csd)
@@ -135,6 +134,134 @@ for method, csd_obj in csd_dict.items():
     ax.set_xlabel('timestep')
 
 plt.show()
+
+
+Example
+-------
+#!/usr/env/python
+
+import matplotlib.pyplot as plt
+import numpy as np
+import icsd
+from scipy import io
+import neo
+import quantities as pq
+
+#loading test data
+test_data = io.loadmat('test_data.mat')
+
+#prepare lfp data for use, by changing the units to SI and append quantities,
+#along with electrode geometry and conductivities
+lfp_data = neo.AnalogSignalArray(test_data['pot1'].T * 1E-6 * pq.V,
+                                 sampling_rate=2.*pq.kHz)
+z_data = np.linspace(100E-6, 2300E-6, 23) * pq.m  # [m]
+diam = 500E-6 * pq.m                              # [m]
+h = 100E-6 * pq.m                                 # [m]
+sigma = 0.3 * pq.S / pq.m                         # [S/m] or [1/(ohm*m)]
+sigma_top = 0.3 * pq.S / pq.m                     # [S/m] or [1/(ohm*m)]
+
+# Input dictionaries for each method
+delta_input = {
+    'lfp' : lfp_data,
+    'coord_electrode' : z_data,
+    'method' : 'delta',
+    'diam' : diam,        # source diameter
+    'sigma' : sigma,           # extracellular conductivity
+    'sigma_top' : sigma,       # conductivity on top of cortex
+    'f_type' : 'gaussian',  # gaussian filter
+    'f_order' : (3, 1),     # 3-point filter, sigma = 1.
+}
+step_input = {
+    'lfp' : lfp_data,
+    'coord_electrode' : z_data,
+    'method' : 'step',
+    'diam' : diam,
+    'h' : h,
+    'sigma' : sigma,
+    'sigma_top' : sigma,
+    'tol' : 1E-12,          # Tolerance in numerical integration
+    'f_type' : 'gaussian',
+    'f_order' : (3, 1),
+}
+spline_input = {
+    'lfp' : lfp_data,
+    'coord_electrode' : z_data,
+    'method' : 'spline',
+    'diam' : diam,
+    'sigma' : sigma,
+    'sigma_top' : sigma,
+    'num_steps' : 201,      # Spatial CSD upsampling to N steps
+    'tol' : 1E-12,
+    'f_type' : 'gaussian',
+    'f_order' : (20, 5),
+}
+std_input = {
+    'lfp' : lfp_data,
+    'coord_electrode' : z_data,
+    'method' : 'standard',
+    'sigma' : sigma,
+    'f_type' : 'gaussian',
+    'f_order' : (3, 1),
+}
+
+#compute CSD and filtered CSD estimates. Note that the returned argument of the
+#function is a tuple of neo.AnalogSignalArray objects (csd, csd_filtered)
+csd_dict = dict(
+    delta_icsd = icsd.estimate_csd(**delta_input),
+    step_icsd = icsd.estimate_csd(**step_input),
+    spline_icsd = icsd.estimate_csd(**spline_input),
+    std_csd = icsd.estimate_csd(**std_input), 
+)
+
+#plot
+for method, csd_obj in csd_dict.items():
+    fig, axes = plt.subplots(3,1, figsize=(8,8))
+    
+    #plot LFP signal
+    ax = axes[0]
+    im = ax.imshow(lfp_data.magnitude.T, origin='upper',
+                   vmin=-abs(lfp_data.magnitude).max(), 
+                   vmax=abs(lfp_data.magnitude).max(), cmap='jet_r',
+                   interpolation='nearest')
+    ax.axis(ax.axis('tight'))
+    cb = plt.colorbar(im, ax=ax)
+    cb.set_label('LFP (%s)' % lfp_data.dimensionality.string)
+    ax.set_xticklabels([])
+    ax.set_title('LFP')
+    ax.set_ylabel('ch #')
+
+    #plot raw csd estimate
+    csd = csd_obj[0]
+    ax = axes[1]
+    im = ax.imshow(csd.magnitude.T, origin='upper',
+                   vmin=-abs(csd.magnitude).max(), 
+                   vmax=abs(csd.magnitude).max(), cmap='jet_r',
+                   interpolation='nearest')
+    ax.axis(ax.axis('tight'))
+    ax.set_title(method)
+    cb = plt.colorbar(im, ax=ax)
+    cb.set_label('CSD (%s)' % csd.dimensionality.string)
+    ax.set_xticklabels([])
+    ax.set_ylabel('ch #')
+    
+    #plot spatially filtered csd estimate
+    ax = axes[2]
+    csd = csd_obj[1]
+    im = ax.imshow(csd.magnitude.T, origin='upper',
+                   vmin=-abs(csd.magnitude).max(), 
+                   vmax=abs(csd.magnitude).max(), cmap='jet_r',
+                   interpolation='nearest')
+    ax.axis(ax.axis('tight'))
+    ax.set_title(method + ', filtered')
+    cb = plt.colorbar(im, ax=ax)
+    cb.set_label('CSD (%s)' % csd.dimensionality.string)
+    ax.set_ylabel('ch #')
+    ax.set_xlabel('timestep')
+
+plt.show()
+
+
+
 '''
 
 import numpy as np
@@ -142,6 +269,7 @@ import scipy.integrate as si
 import scipy.signal as ss
 import quantities as pq
 import neo
+from testing import test
 
 
 class CSD(object):
@@ -151,7 +279,7 @@ class CSD(object):
 
         Parameters
         ----------
-        lfp : np.ndarray
+        lfp : np.ndarray * quantity.Quantity
             LFP signal of shape (# channels, # time steps)
         f_type : str
             type of spatial filter, must be a scipy.signal filter design method
@@ -175,7 +303,7 @@ class CSD(object):
 
         Returns
         -------
-        csd : np.ndarray * units
+        csd : np.ndarray * quantity.Quantity
             Array with the csd estimate
         '''
         csd = np.linalg.solve(self.f_matrix, self.lfp)
@@ -184,7 +312,14 @@ class CSD(object):
 
 
     def filter_csd(self, csd):
-        '''Spatial filtering of the CSD estimate, using an N-point filter'''
+        '''
+        Spatial filtering of the CSD estimate, using an N-point filter
+        
+        Arguments
+        ---------
+        csd : np.ndarrray * quantity.Quantity
+            Array with the csd estimate
+        '''
         if not self.f_order > 0 and isinstance(self.f_order, int):
             raise Exception, 'Filter order must be int > 0!'
 
@@ -235,12 +370,12 @@ class StandardCSD(CSD):
 
         Parameters
         ----------
-        lfp : np.ndarray
+        lfp : np.ndarray * quantity.Quantity
             LFP signal of shape (# channels, # time steps) in units of V
-        coord_electrode : np.ndarray
+        coord_electrode : np.ndarray * quantity.Quantity
             depth of evenly spaced electrode contact points of shape
             (# contacts, ) in units of m, must be monotonously increasing
-        sigma : float
+        sigma : float * quantity.Quantity
             conductivity of tissue in units of S/m or 1/(ohm*m)
         vaknin_el : bool
             flag for using method of Vaknin to endpoint electrodes
@@ -290,7 +425,14 @@ class StandardCSD(CSD):
 
 
     def get_csd(self):
-        '''Perform the iCSD calculation, i.e: iCSD=F_inv*LFP'''
+        '''
+        Perform the iCSD calculation, i.e: iCSD=F_inv*LFP
+        
+        Returns
+        -------
+        csd : np.ndarray * quantity.Quantity
+            Array with the csd estimate
+        '''
         csd = np.dot(self.f_inv_matrix, self.lfp)[1:-1, ]
         # `np.dot()` does not return correct units, so the units of `csd` must
         # be assigned manually
@@ -316,17 +458,17 @@ class DeltaiCSD(CSD):
 
         Parameters
         ----------
-        lfp : np.ndarray
+        lfp : np.ndarray * quantity.Quantity
             LFP signal of shape (# channels, # time steps) in units of V
-        coord_electrode : np.ndarray
+        coord_electrode : np.ndarray * quantity.Quantity
             depth of evenly spaced electrode contact points of shape
             (# contacts, ) in units of m
-        diam : float
+        diam : float * quantity.Quantity
             diamater of the assumed circular planar current sources centered
             at each contact
-        sigma : float
+        sigma : float * quantity.Quantity
             conductivity of tissue in units of S/m or 1/(ohm*m)
-        sigma_top : float
+        sigma_top : float * quantity.Quantity
             conductivity on top of tissue in units of S/m or 1/(ohm*m)
         f_type : str
             type of spatial filter, must be a scipy.signal filter design method
@@ -407,19 +549,19 @@ class StepiCSD(CSD):
 
         Parameters
         ----------
-        lfp : np.ndarray
+        lfp : np.ndarray * quantity.Quantity
             LFP signal of shape (# channels, # time steps) in units of V
-        coord_electrode : np.ndarray
+        coord_electrode : np.ndarray * quantity.Quantity
             depth of evenly spaced electrode contact points of shape
             (# contacts, ) in units of m
-        diam : float or np.ndarray
+        diam : float or np.ndarray * quantity.Quantity
             diameter(s) of the assumed circular planar current sources centered
             at each contact
-        h : float or np.ndarray
+        h : float or np.ndarray * quantity.Quantity
             assumed thickness of the source cylinders at all or each contact
-        sigma : float
+        sigma : float * quantity.Quantity
             conductivity of tissue in units of S/m or 1/(ohm*m)
-        sigma_top : float
+        sigma_top : float * quantity.Quantity
             conductivity on top of tissue in units of S/m or 1/(ohm*m)
         tol : float
             tolerance of numerical integration
@@ -525,17 +667,17 @@ class SplineiCSD(CSD):
 
         Parameters
         ----------
-        lfp : np.ndarray
+        lfp : np.ndarray * quantity.Quantity
             LFP signal of shape (# channels, # time steps) in units of V
-        coord_electrode : np.ndarray
+        coord_electrode : np.ndarray * quantity.Quantity
             depth of evenly spaced electrode contact points of shape
             (# contacts, ) in units of m
-        diam : float
+        diam : float * quantity.Quantity
             diamater of the assumed circular planar current sources centered
             at each contact
-        sigma : float
+        sigma : float * quantity.Quantity
             conductivity of tissue in units of S/m or 1/(ohm*m)
-        sigma_top : float
+        sigma_top : float * quantity.Quantity
             conductivity on top of tissue in units of S/m or 1/(ohm*m)
         tol : float
             tolerance of numerical integration
@@ -654,7 +796,16 @@ class SplineiCSD(CSD):
 
 
     def get_csd(self):
-        '''Calculate the iCSD using the spline iCSD method'''
+        '''
+        Calculate the iCSD using the spline iCSD method
+        
+        Returns
+        -------
+        csd : np.ndarray * quantity.Quantity
+            Array with csd estimate
+        
+        
+        '''
         e_mat = self._calc_e_matrices()
 
         el_len = self.coord_electrode.size
@@ -795,48 +946,53 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
 
     Parameters
     ----------
-    :param lfp: : neo.AnalogSignalArray
+    lfp : neo.AnalogSignalArray
         LFP signals from which CSD is estimated.
-    :param coord_electrode: : Quantity array
+    coord_electrode : Quantity array
         Depth of evenly spaced electrode contact points.
-    :param sigma: : Quantity float
+    sigma : Quantity float
         Conductivity of tissue.
-    :param method: : string
+    method : string
         CSD estimation method, either of 'standard': the standard
         double-derivative method, 'delta': delta-iCSD method, 'step':
         step-iCSD method, 'spline': spline-iCSD method. Default is 'standard'
-    :param diam: : Quantity float
+    diam : Quantity float
         Diamater of the assumed circular planar current sources centered at
         each contact, required by iCSD methods (= 'delta', 'step',
         'spline'). Default is `None`.
-    :param sigma_top: : Quantity float
+    h : float or np.ndarray * quantity.Quantity
+        assumed thickness of the source cylinders at all or each contact
+    sigma_top : Quantity float
         Conductivity on top of tissue. When set to `None`, the same value as
-        :param sigma: is used. Default is `None`.
-    :param tol: : float
+        sigma: is used. Default is `None`.
+    tol : float
         Tolerance of numerical integration, required by step- and
         spline-iCSD methods. Default is 1E-6.
-    :param num_steps: : int
+    num_steps : int
         Number of data points for the spatially upsampled LFP/CSD data,
         required by spline-iCSD method. Default is 200.
-    :param f_type: : string
+    f_type : string
         Type of spatial filter used for smoothing of the result, either of
         'boxcar' (uses `scipy.signal.baxcar()`), 'hamming' (
         `scipy.signal.hamming()`), 'triangular' (`scipy.signal.tri()`),
         'gaussian' (`scipy.signal.gaussian`), 'identity' (no smoothing is
         applied). Default is 'identity'.
-    :param f_order: : float tuple
+    f_order : float tuple
         Parameters to be passed to the scipy.signal function associated with
         the specified filter type.
 
+
     Returns
     -------
-    csd : neo.AnalogSignalArray
-        Estimated CSD
-    csd_filtered : neo.AnalogSignalArray
-        Estimated CSD, spatially filtered
+    tuple : (csd, csd_filtered)
+        csd : neo.AnalogSignalArray
+            Estimated CSD
+        csd_filtered : neo.AnalogSignalArray
+            Estimated CSD, spatially filtered
 
-    Examples
-    -------_
+
+    Example
+    -------
     import numpy as np
     import matplotlib.pyplot as plt
     from scipy import io
@@ -976,7 +1132,3 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
 
     return csd, csd_filtered
 
-
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod()
