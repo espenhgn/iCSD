@@ -10,4 +10,4 @@ Journal of Neuroscience Methods, Volume 154, Issues 1Ð2, 30 June 2006, Pages 116
 
 Keywords: Local field potentials; Current-source density; CSD; Multielectrode; Laminar electrode; Barrel cortex
 
-To see an example of usage of the methods, see the file test_icsd.py
+To see an example of usage of the methods, see the file demo_icsd.py
