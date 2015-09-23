@@ -4,6 +4,15 @@ py-iCSD toolbox!
 Translation of the core functionality of the CSDplotter MATLAB package
 to python.
 
+The methods were originally developed by Klas H. Pettersen, as described in:
+Klas H. Pettersen, Anna Devor, Istvan Ulbert, Anders M. Dale, Gaute T. Einevoll,
+Current-source density estimation based on inversion of electrostatic forward
+solution: Effects of finite extent of neuronal activity and conductivity
+discontinuities, Journal of Neuroscience Methods, Volume 154, Issues 1-2,
+30 June 2006, Pages 116-133, ISSN 0165-0270,
+http://dx.doi.org/10.1016/j.jneumeth.2005.12.005.
+(http://www.sciencedirect.com/science/article/pii/S0165027005004541)
+
 The method themselves are implemented as callable subclasses of the base
 CSD class object, which sets some common attributes,
 and a basic function for calculating the iCSD, and a generic spatial filter
