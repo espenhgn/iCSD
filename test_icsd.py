@@ -39,8 +39,8 @@ def potential_of_plane(z_j, z_i=0.*pq.m,
     try:
         assert(z_j.units == z_i.units)
     except AssertionError as ae:
-        raise ae, 'units of z_j ({}) and z_i ({}) not equal'.format(z_j.units,
-                                                                    z_i.units)
+        raise ae('units of z_j ({}) and z_i ({}) not equal'.format(z_j.units,
+                                                                    z_i.units))
     
     return -C_i/(2*sigma)*abs(z_j-z_i).simplified
 
@@ -70,8 +70,8 @@ def potential_of_disk(z_j,
     try:
         assert(z_j.units == z_i.units == R_i.units)
     except AssertionError as ae:
-        raise ae, 'units of z_j ({}), z_i ({}) and R_i ({}) not equal'.format(
-            z_j.units, z_i.units, R_i.units)
+        raise ae('units of z_j ({}), z_i ({}) and R_i ({}) not equal'.format(
+            z_j.units, z_i.units, R_i.units))
     
     return C_i/(2*sigma)*(np.sqrt((z_j-z_i)**2 + R_i**2) - abs(z_j-z_i)).simplified
 
@@ -119,8 +119,8 @@ def potential_of_cylinder(z_j,
     try:
         assert(z_j.units == z_i.units == R_i.units == h_i.units)
     except AssertionError as ae:
-        raise ae, 'units of z_j ({}), z_i ({}), R_i ({}) and h ({}) not equal'.format(
-            z_j.units, z_i.units, R_i.units, h_i.units)
+        raise ae('units of z_j ({}), z_i ({}), R_i ({}) and h ({}) not equal'.format(
+            z_j.units, z_i.units, R_i.units, h_i.units))
 
     #speed up tests by stripping units
     _sigma = float(sigma)
@@ -914,7 +914,7 @@ class TestICSD(unittest.TestCase):
         f_C = interp1d(z_i, C_i, kind='cubic')
         f_R = interp1d(z_i, R_i)
         num_steps = 201
-        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)
+        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)*z_i.units
         C_i_i = f_C(np.asarray(z_i_i))*C_i.units
         R_i_i = f_R(z_i_i)*R_i.units
 
@@ -976,7 +976,7 @@ class TestICSD(unittest.TestCase):
         f_C = interp1d(z_i, C_i, kind='cubic')
         f_R = interp1d(z_i, R_i)
         num_steps = 201
-        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)
+        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)*z_i.units
         C_i_i = f_C(np.asarray(z_i_i))*C_i.units
         R_i_i = f_R(z_i_i)*R_i.units
 
@@ -1038,7 +1038,7 @@ class TestICSD(unittest.TestCase):
         f_C = interp1d(z_i, C_i, kind='cubic')
         f_R = interp1d(z_i, R_i)
         num_steps = 201
-        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)
+        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)*z_i.units
         C_i_i = f_C(np.asarray(z_i_i))*C_i.units
         R_i_i = f_R(z_i_i)*R_i.units
 
@@ -1100,7 +1100,7 @@ class TestICSD(unittest.TestCase):
         f_C = interp1d(z_i, C_i, kind='cubic')
         f_R = interp1d(z_i, R_i)
         num_steps = 201
-        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)
+        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)*z_i.units
         C_i_i = f_C(np.asarray(z_i_i))*C_i.units
         R_i_i = f_R(z_i_i)*R_i.units
 
@@ -1162,7 +1162,7 @@ class TestICSD(unittest.TestCase):
         f_C = interp1d(z_i, C_i, kind='cubic')
         f_R = interp1d(z_i, R_i)
         num_steps = 201
-        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)
+        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)*z_i.units
         C_i_i = f_C(np.asarray(z_i_i))*C_i.units
         R_i_i = f_R(z_i_i)*R_i.units
 

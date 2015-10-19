@@ -272,13 +272,12 @@ plt.show()
 
 
 '''
-
 import numpy as np
 import scipy.integrate as si
 import scipy.signal as ss
 import quantities as pq
 import neo
-from testing import test
+from test_icsd import test
 
 
 class CSD(object):
@@ -330,7 +329,7 @@ class CSD(object):
             Array with the csd estimate
         '''
         if not self.f_order > 0 and isinstance(self.f_order, int):
-            raise Exception, 'Filter order must be int > 0!'
+            raise Exception('Filter order must be int > 0!')
 
         if self.f_type == 'boxcar':
             num = ss.boxcar(self.f_order)
@@ -348,7 +347,7 @@ class CSD(object):
             num = np.array([1.])
             denom = np.array([1.])
         else:
-            raise Exception, '%s Wrong filter type!' % self.f_type
+            raise Exception('%s Wrong filter type!' % self.f_type)
 
         num_string = '[ '
         for i in num:
@@ -359,8 +358,8 @@ class CSD(object):
             denom_string = denom_string + '%.3f ' % i
         denom_string = denom_string + ']'
 
-        print 'discrete filter coefficients: \nb = %s, \na = %s' % \
-                                                     (num_string, denom_string)
+        print('discrete filter coefficients: \nb = %s, \na = %s' % \
+                                                     (num_string, denom_string))
 
         return ss.filtfilt(num, denom, csd, axis=0) * csd.units
 
@@ -403,7 +402,7 @@ class StandardCSD(CSD):
         try:
             assert(np.all(np.diff(np.diff(coord_electrode)))==0)
         except AssertionError as ae:
-            raise ae, 'coord_electrode not monotonously varying'
+            raise ae('coord_electrode not monotonously varying')
 
         if vaknin_el:
             #extend array of lfps by duplicating potential at endpoint contacts
@@ -490,13 +489,13 @@ class DeltaiCSD(CSD):
         try:
             assert(diam.units == coord_electrode.units)
         except AssertionError as ae:
-            raise ae, 'units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
-                                                                                  diam.units)
+            raise ae('units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
+                                                                                  diam.units))
 
         try:
             assert(np.all(np.diff(coord_electrode) > 0))
         except AssertionError as ae:
-            raise ae, 'values of coord_electrode not continously increasing'
+            raise ae('values of coord_electrode not continously increasing')
 
         try:
             assert(diam.size == 1 or diam.size == coord_electrode.size)
@@ -505,7 +504,7 @@ class DeltaiCSD(CSD):
             else:
                 assert(diam > 0*diam.units)
         except AssertionError as ae:
-            raise ae, 'diam must be positive scalar or of same shape as coord_electrode'
+            raise ae('diam must be positive scalar or of same shape as coord_electrode')
         if diam.size == 1:
             diam = np.ones(coord_electrode.size)*diam
 
@@ -585,12 +584,12 @@ class StepiCSD(CSD):
         try:
             assert(diam.units == coord_electrode.units)
         except AssertionError as ae:
-            raise ae, 'units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
-                                                                                  diam.units)
+            raise ae('units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
+                                                                                  diam.units))
         try:
             assert(np.all(np.diff(coord_electrode) > 0))
         except AssertionError as ae:
-            raise ae, 'values of coord_electrode not continously increasing'
+            raise ae('values of coord_electrode not continously increasing')
 
         try:
             assert(diam.size == 1 or diam.size == coord_electrode.size)
@@ -599,7 +598,7 @@ class StepiCSD(CSD):
             else:
                 assert(diam > 0*diam.units)
         except AssertionError as ae:
-            raise ae, 'diam must be positive scalar or of same shape as coord_electrode'
+            raise ae('diam must be positive scalar or of same shape as coord_electrode')
         if diam.size == 1:
             diam = np.ones(coord_electrode.size)*diam
 
@@ -608,7 +607,7 @@ class StepiCSD(CSD):
             if h.size == coord_electrode.size:
                 assert(np.all(h > 0*h.units))
         except AssertionError as ae:
-            raise ae, 'h must be scalar or of same shape as coord_electrode'
+            raise ae('h must be scalar or of same shape as coord_electrode')
         if h.size == 1:
             h = np.ones(coord_electrode.size)*h
 
@@ -703,19 +702,19 @@ class SplineiCSD(CSD):
         try:
             assert(diam.units == coord_electrode.units)
         except AssertionError as ae:
-            raise ae, 'units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
-                                                                                  diam.units)
+            raise ae('units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
+                                                                                  diam.units))
         try:
             assert(np.all(np.diff(coord_electrode) > 0))
         except AssertionError as ae:
-            raise ae, 'values of coord_electrode not continously increasing'
+            raise ae('values of coord_electrode not continously increasing')
 
         try:
             assert(diam.size == 1 or diam.size == coord_electrode.size)
             if diam.size == coord_electrode.size:
                 assert(np.all(diam > 0*diam.units))
         except AssertionError as ae:
-            raise ae, 'diam must be scalar or of same shape as coord_electrode'
+            raise ae('diam must be scalar or of same shape as coord_electrode')
         if diam.size == 1:
             diam = np.ones(coord_electrode.size)*diam
 

@@ -71,7 +71,7 @@ csd_dict = dict(
 )
 
 #plot
-for method, csd_obj in csd_dict.items():
+for method, csd_obj in list(csd_dict.items()):
     fig, axes = plt.subplots(3,1, figsize=(8,8))
     
     #plot LFP signal
@@ -169,7 +169,7 @@ csd_dict = dict(
 )
 
 #plot
-for method, csd_obj in csd_dict.items():
+for method, csd_obj in list(csd_dict.items()):
     fig, axes = plt.subplots(3,1, figsize=(8,8))
     
     #plot LFP signal
