@@ -1,5 +1,6 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 '''icsd testing suite'''
+
 import os
 import numpy as np
 import numpy.testing as nt
@@ -8,8 +9,22 @@ import scipy.integrate as si
 from scipy.interpolate import interp1d
 import icsd
 import unittest
-import matplotlib.pyplot as plt
-    
+
+#patch quantities with the SI unit Siemens if it does not exist
+for symbol, prefix, definition, u_symbol in zip(
+    ['siemens', 'S', 'mS', 'uS', 'nS', 'pS'],
+    ['', '', 'milli', 'micro', 'nano', 'pico'],
+    [pq.A/pq.V, pq.A/pq.V, 'S', 'mS', 'uS', 'nS'],
+    [None, None, None, None, u'µS', None]):
+    if type(definition) is str:
+        definition = lastdefinition / 1000
+    if not hasattr(pq, symbol):
+        setattr(pq, symbol, pq.UnitQuantity(
+            prefix + 'siemens',
+            definition,
+            symbol=symbol,
+            u_symbol=u_symbol))
+    lastdefinition = definition
 
 
 def potential_of_plane(z_j, z_i=0.*pq.m,
@@ -39,8 +54,9 @@ def potential_of_plane(z_j, z_i=0.*pq.m,
     try:
         assert(z_j.units == z_i.units)
     except AssertionError as ae:
-        raise ae('units of z_j ({}) and z_i ({}) not equal'.format(z_j.units,
+        print('units of z_j ({}) and z_i ({}) not equal'.format(z_j.units,
                                                                     z_i.units))
+        raise ae
     
     return -C_i/(2*sigma)*abs(z_j-z_i).simplified
 
@@ -70,8 +86,9 @@ def potential_of_disk(z_j,
     try:
         assert(z_j.units == z_i.units == R_i.units)
     except AssertionError as ae:
-        raise ae('units of z_j ({}), z_i ({}) and R_i ({}) not equal'.format(
+        print('units of z_j ({}), z_i ({}) and R_i ({}) not equal'.format(
             z_j.units, z_i.units, R_i.units))
+        raise ae
     
     return C_i/(2*sigma)*(np.sqrt((z_j-z_i)**2 + R_i**2) - abs(z_j-z_i)).simplified
 
@@ -119,8 +136,9 @@ def potential_of_cylinder(z_j,
     try:
         assert(z_j.units == z_i.units == R_i.units == h_i.units)
     except AssertionError as ae:
-        raise ae('units of z_j ({}), z_i ({}), R_i ({}) and h ({}) not equal'.format(
+        print('units of z_j ({}), z_i ({}), R_i ({}) and h ({}) not equal'.format(
             z_j.units, z_i.units, R_i.units, h_i.units))
+        raise ae
 
     #speed up tests by stripping units
     _sigma = float(sigma)
@@ -148,12 +166,13 @@ def get_lfp_of_planes(z_j=np.arange(21)*1E-4*pq.m,
     density
     '''
     phi_j = np.zeros(z_j.size)*pq.V
-    for i, zi in enumerate(z_i):
+    for i, (zi, Ci) in enumerate(zip(z_i, C_i)):
         for j, zj in enumerate(z_j):
-            phi_j[j] += potential_of_plane(zj, zi, C_i[i], sigma)
+            phi_j[j] += potential_of_plane(zj, zi, Ci, sigma)
     
     #test plot
     if plot:
+        import matplotlib.pyplot as plt
         plt.figure()
         plt.subplot(121)
         ax = plt.gca()
@@ -186,12 +205,13 @@ def get_lfp_of_disks(z_j=np.arange(21)*1E-4*pq.m,
     current source density
     '''
     phi_j = np.zeros(z_j.size)*pq.V
-    for i, zi in enumerate(z_i):
+    for i, (zi, Ci, Ri) in enumerate(zip(z_i, C_i, R_i)):
         for j, zj in enumerate(z_j):
-            phi_j[j] += potential_of_disk(zj, zi, C_i[i], R_i[i], sigma)
+            phi_j[j] += potential_of_disk(zj, zi, Ci, Ri, sigma)
     
     #test plot
     if plot:
+        import matplotlib.pyplot as plt
         plt.figure()
         plt.subplot(121)
         ax = plt.gca()
@@ -225,12 +245,13 @@ def get_lfp_of_cylinders(z_j=np.arange(21)*1E-4*pq.m,
     current source density
     '''
     phi_j = np.zeros(z_j.size)*pq.V
-    for i, zi in enumerate(z_i):
+    for i, (zi, Ci, Ri, hi) in enumerate(zip(z_i, C_i, R_i, h_i)):
         for j, zj in enumerate(z_j):
-            phi_j[j] += potential_of_cylinder(zj, zi, C_i[i], R_i[i], h_i[i], sigma)
+            phi_j[j] += potential_of_cylinder(zj, zi, Ci, Ri, hi, sigma)
     
     #test plot
     if plot:
+        import matplotlib.pyplot as plt
         plt.figure()
         plt.subplot(121)
         ax = plt.gca()
@@ -914,7 +935,7 @@ class TestICSD(unittest.TestCase):
         f_C = interp1d(z_i, C_i, kind='cubic')
         f_R = interp1d(z_i, R_i)
         num_steps = 201
-        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)*z_i.units
+        z_i_i = np.linspace(float(z_i[0]), float(z_i[-1]), num_steps)*z_i.units
         C_i_i = f_C(np.asarray(z_i_i))*C_i.units
         R_i_i = f_R(z_i_i)*R_i.units
 
@@ -976,7 +997,7 @@ class TestICSD(unittest.TestCase):
         f_C = interp1d(z_i, C_i, kind='cubic')
         f_R = interp1d(z_i, R_i)
         num_steps = 201
-        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)*z_i.units
+        z_i_i = np.linspace(float(z_i[0]), float(z_i[-1]), num_steps)*z_i.units
         C_i_i = f_C(np.asarray(z_i_i))*C_i.units
         R_i_i = f_R(z_i_i)*R_i.units
 
@@ -1038,7 +1059,7 @@ class TestICSD(unittest.TestCase):
         f_C = interp1d(z_i, C_i, kind='cubic')
         f_R = interp1d(z_i, R_i)
         num_steps = 201
-        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)*z_i.units
+        z_i_i = np.linspace(float(z_i[0]), float(z_i[-1]), num_steps)*z_i.units
         C_i_i = f_C(np.asarray(z_i_i))*C_i.units
         R_i_i = f_R(z_i_i)*R_i.units
 
@@ -1100,7 +1121,7 @@ class TestICSD(unittest.TestCase):
         f_C = interp1d(z_i, C_i, kind='cubic')
         f_R = interp1d(z_i, R_i)
         num_steps = 201
-        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)*z_i.units
+        z_i_i = np.linspace(float(z_i[0]), float(z_i[-1]), num_steps)*z_i.units
         C_i_i = f_C(np.asarray(z_i_i))*C_i.units
         R_i_i = f_R(z_i_i)*R_i.units
 
@@ -1162,7 +1183,7 @@ class TestICSD(unittest.TestCase):
         f_C = interp1d(z_i, C_i, kind='cubic')
         f_R = interp1d(z_i, R_i)
         num_steps = 201
-        z_i_i = np.linspace(z_i[0], z_i[-1], num_steps)*z_i.units
+        z_i_i = np.linspace(float(z_i[0]), float(z_i[-1]), num_steps)*z_i.units
         C_i_i = f_C(np.asarray(z_i_i))*C_i.units
         R_i_i = f_R(z_i_i)*R_i.units
 
@@ -1193,31 +1214,30 @@ class TestICSD(unittest.TestCase):
         nt.assert_array_almost_equal(C_i, csd, decimal=3)
 
                 
-def test(verbosity=2):
-    '''
-    Run unittests for the CSD toolbox
-    
-    
-    Arguments
-    ---------
-    verbosity : int
-        verbosity level
-        
-    '''
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestICSD)
-    unittest.TextTestRunner(verbosity=verbosity).run(suite)
-    
+#def suite(verbosity=2):
+#    '''
+#    Run unittests for the CSD toolbox
+#    
+#    
+#    Arguments
+#    ---------
+#    verbosity : int
+#        verbosity level
+#        
+#    '''
+#    suite = unittest.TestLoader().loadTestsFromTestCase(TestICSD)
+#    unittest.TextTestRunner(verbosity=verbosity).run(suite)
+#    
+#
+#
+#if __name__ == '__main__':
+#    suite()
 
 
-if __name__ == '__main__':
-    #run test function
-    test()
-    
-    ##show some test plots
-    #plt.close('all')
-    #    
-    #phi_j, C_i = get_lfp_of_planes()
-    #phi_j, C_i = get_lfp_of_disks()
-    #phi_j, C_i = get_lfp_of_cylinders()
-    #
-    #plt.show()
+def suite():
+    suite = unittest.makeSuite(TestICSD, 'test')
+    return suite
+
+if __name__ == "__main__":
+    runner = unittest.TextTestRunner(verbosity=2)
+    runner.run(suite())

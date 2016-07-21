@@ -1,4 +1,4 @@
-#!/usr/env/python
+# -*- coding: utf-8 -*-
 '''
 py-iCSD toolbox!
 Translation of the core functionality of the CSDplotter MATLAB package
@@ -274,13 +274,30 @@ plt.show()
 
 
 '''
+
 import numpy as np
 import scipy.integrate as si
 import scipy.signal as ss
 import quantities as pq
 import neo
-from test_icsd import test
 
+
+#patch quantities with the SI unit Siemens if it does not exist
+for symbol, prefix, definition, u_symbol in zip(
+    ['siemens', 'S', 'mS', 'uS', 'nS', 'pS'],
+    ['', '', 'milli', 'micro', 'nano', 'pico'],
+    [pq.A/pq.V, pq.A/pq.V, 'S', 'mS', 'uS', 'nS'],
+    [None, None, None, None, u'µS', None]):
+    if type(definition) is str:
+        definition = lastdefinition / 1000
+    if not hasattr(pq, symbol):
+        setattr(pq, symbol, pq.UnitQuantity(
+            prefix + 'siemens',
+            definition,
+            symbol=symbol,
+            u_symbol=u_symbol))
+    lastdefinition = definition
+    
 
 class CSD(object):
     '''Base iCSD class'''
@@ -330,8 +347,17 @@ class CSD(object):
         csd : np.ndarrray * quantity.Quantity
             Array with the csd estimate
         '''
-        if not self.f_order > 0 and isinstance(self.f_order, int):
-            raise Exception('Filter order must be int > 0!')
+        if self.f_type == 'gaussian':
+            try:
+                assert(len(self.f_order) == 2)
+            except AssertionError as ae:
+                raise ae('filter order f_order must be a tuple of length 2')
+        else:
+            try:
+                assert(self.f_order > 0 and isinstance(self.f_order, int))
+            except AssertionError as ae:
+                raise ae('Filter order must be int > 0!')
+                
 
         if self.f_type == 'boxcar':
             num = ss.boxcar(self.f_order)
@@ -349,7 +375,8 @@ class CSD(object):
             num = np.array([1.])
             denom = np.array([1.])
         else:
-            raise Exception('%s Wrong filter type!' % self.f_type)
+            print('%s Wrong filter type!' % self.f_type)
+            raise
 
         num_string = '[ '
         for i in num:
@@ -360,8 +387,7 @@ class CSD(object):
             denom_string = denom_string + '%.3f ' % i
         denom_string = denom_string + ']'
 
-        print('discrete filter coefficients: \nb = %s, \na = %s' % \
-                                                     (num_string, denom_string))
+        print(('discrete filter coefficients: \nb = {}, \na = {}'.format(num_string, denom_string)))
 
         return ss.filtfilt(num, denom, csd, axis=0) * csd.units
 
@@ -404,7 +430,8 @@ class StandardCSD(CSD):
         try:
             assert(np.all(np.diff(np.diff(coord_electrode)))==0)
         except AssertionError as ae:
-            raise ae('coord_electrode not monotonously varying')
+            print('coord_electrode not monotonously varying')
+            raise ae
 
         if vaknin_el:
             #extend array of lfps by duplicating potential at endpoint contacts
@@ -491,13 +518,15 @@ class DeltaiCSD(CSD):
         try:
             assert(diam.units == coord_electrode.units)
         except AssertionError as ae:
-            raise ae('units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
+            print('units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
                                                                                   diam.units))
+            raise ae
 
         try:
             assert(np.all(np.diff(coord_electrode) > 0))
         except AssertionError as ae:
-            raise ae('values of coord_electrode not continously increasing')
+            print('values of coord_electrode not continously increasing')
+            raise ae
 
         try:
             assert(diam.size == 1 or diam.size == coord_electrode.size)
@@ -506,7 +535,8 @@ class DeltaiCSD(CSD):
             else:
                 assert(diam > 0*diam.units)
         except AssertionError as ae:
-            raise ae('diam must be positive scalar or of same shape as coord_electrode')
+            print('diam must be positive scalar or of same shape as coord_electrode')
+            raise ae
         if diam.size == 1:
             diam = np.ones(coord_electrode.size)*diam
 
@@ -586,12 +616,14 @@ class StepiCSD(CSD):
         try:
             assert(diam.units == coord_electrode.units)
         except AssertionError as ae:
-            raise ae('units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
+            print('units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
                                                                                   diam.units))
+            raise ae            
         try:
             assert(np.all(np.diff(coord_electrode) > 0))
         except AssertionError as ae:
-            raise ae('values of coord_electrode not continously increasing')
+            print('values of coord_electrode not continously increasing')
+            raise ae
 
         try:
             assert(diam.size == 1 or diam.size == coord_electrode.size)
@@ -600,7 +632,8 @@ class StepiCSD(CSD):
             else:
                 assert(diam > 0*diam.units)
         except AssertionError as ae:
-            raise ae('diam must be positive scalar or of same shape as coord_electrode')
+            print('diam must be positive scalar or of same shape as coord_electrode')
+            raise ae
         if diam.size == 1:
             diam = np.ones(coord_electrode.size)*diam
 
@@ -609,7 +642,8 @@ class StepiCSD(CSD):
             if h.size == coord_electrode.size:
                 assert(np.all(h > 0*h.units))
         except AssertionError as ae:
-            raise ae('h must be scalar or of same shape as coord_electrode')
+            print('h must be scalar or of same shape as coord_electrode')
+            raise ae
         if h.size == 1:
             h = np.ones(coord_electrode.size)*h
 
@@ -704,19 +738,22 @@ class SplineiCSD(CSD):
         try:
             assert(diam.units == coord_electrode.units)
         except AssertionError as ae:
-            raise ae('units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
+            print('units of coord_electrode ({}) and diam ({}) differ'.format(coord_electrode.units,
                                                                                   diam.units))
+            raise
         try:
             assert(np.all(np.diff(coord_electrode) > 0))
         except AssertionError as ae:
-            raise ae('values of coord_electrode not continously increasing')
+            print('values of coord_electrode not continously increasing')
+            raise ae
 
         try:
             assert(diam.size == 1 or diam.size == coord_electrode.size)
             if diam.size == coord_electrode.size:
                 assert(np.all(diam > 0*diam.units))
         except AssertionError as ae:
-            raise ae('diam must be scalar or of same shape as coord_electrode')
+            print('diam must be scalar or of same shape as coord_electrode')
+            raise ae
         if diam.size == 1:
             diam = np.ones(coord_electrode.size)*diam
 
@@ -1094,19 +1131,21 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
     icsd_methods = ('delta', 'step', 'spline')
 
     if method not in supported_methods:
-        raise ValueError("Pamareter `method` must be either of {}".format(
+        print("Pamareter `method` must be either of {}".format(
             ", ".join(supported_methods)))
+        raise ValueError
     elif method in icsd_methods and diam is None:
-        raise ValueError(
-            "Parameter `diam` must be specified for iCSD methods: {}".format(
-                ", ".join(icsd_methods)))
+        print("Parameter `diam` must be specified for iCSD methods: {}".format(
+              ", ".join(icsd_methods)))
+        raise ValueError
 
     if not isinstance(lfp, neo.AnalogSignalArray):
-        raise TypeError('Parameter `lfp` must be neo.AnalogSignalArray')
+        print('Parameter `lfp` must be neo.AnalogSignalArray')
+        raise TypeError
 
     if f_type is not 'identity' and f_order is None:
-        raise ValueError(
-            "The order of {} filter must be specified".format(f_type))
+        print("The order of {} filter must be specified".format(f_type))
+        raise ValueError
 
     lfp_pqarr = lfp.magnitude.T * lfp.units
     if sigma_top is None:
