@@ -163,7 +163,7 @@ test_data = io.loadmat('test_data.mat')
 
 #prepare lfp data for use, by changing the units to SI and append quantities,
 #along with electrode geometry and conductivities
-lfp_data = neo.AnalogSignalArray(test_data['pot1'].T * 1E-6 * pq.V,
+lfp_data = neo.AnalogSignal(test_data['pot1'].T * 1E-6 * pq.V,
                                  sampling_rate=2.*pq.kHz)
 z_data = np.linspace(100E-6, 2300E-6, 23) * pq.m  # [m]
 diam = 500E-6 * pq.m                              # [m]
@@ -216,7 +216,7 @@ std_input = {
 }
 
 #compute CSD and filtered CSD estimates. Note that the returned argument of the
-#function is a tuple of neo.AnalogSignalArray objects (csd, csd_filtered)
+#function is a tuple of neo.AnalogSignal objects (csd, csd_filtered)
 csd_dict = dict(
     delta_icsd = icsd.estimate_csd(**delta_input),
     step_icsd = icsd.estimate_csd(**step_input),
@@ -1004,7 +1004,7 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
 
     Parameters
     ----------
-    lfp : neo.AnalogSignalArray
+    lfp : neo.AnalogSignal
         LFP signals from which CSD is estimated.
     coord_electrode : Quantity array
         Depth of evenly spaced electrode contact points.
@@ -1043,9 +1043,9 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
     Returns
     -------
     tuple : (csd, csd_filtered)
-        csd : neo.AnalogSignalArray
+        csd : neo.AnalogSignal
             Estimated CSD
-        csd_filtered : neo.AnalogSignalArray
+        csd_filtered : neo.AnalogSignal
             Estimated CSD, spatially filtered
 
 
@@ -1071,7 +1071,7 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
     sigma = 0.3 * pq.S / pq.m                         # [S/m] or [1/(ohm*m)]
     sigma_top = 0. * pq.S / pq.m                      # [S/m] or [1/(ohm*m)]
 
-    lfp = neo.AnalogSignalArray(lfp_data.T, sampling_rate=2.0*pq.kHz)
+    lfp = neo.AnalogSignal(lfp_data.T, sampling_rate=2.0*pq.kHz)
 
     # Input dictionaries for each method
     params = {}
@@ -1150,11 +1150,11 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
               ", ".join(icsd_methods)))
         raise ValueError
 
-    if not isinstance(lfp, neo.AnalogSignalArray):
-        print('Parameter `lfp` must be neo.AnalogSignalArray')
+    if not isinstance(lfp, neo.AnalogSignal):
+        print('Parameter `lfp` must be neo.AnalogSignal')
         raise TypeError
 
-    if f_type is not 'identity' and f_order is None:
+    if f_type != 'identity' and f_order is None:
         print("The order of {} filter must be specified".format(f_type))
         raise ValueError
 
@@ -1185,10 +1185,9 @@ def estimate_csd(lfp, coord_electrode, sigma, method='standard', diam=None,
                 csd_estimator = SplineiCSD(**arg_dict)
     csd_pqarr = csd_estimator.get_csd()
     csd_pqarr_filtered = csd_estimator.filter_csd(csd_pqarr)
-    csd = neo.AnalogSignalArray(csd_pqarr.T, t_start=lfp.t_start,
+    csd = neo.AnalogSignal(csd_pqarr.T, t_start=lfp.t_start,
                                          sampling_rate=lfp.sampling_rate)
-    csd_filtered = neo.AnalogSignalArray(csd_pqarr_filtered.T, t_start=lfp.t_start,
+    csd_filtered = neo.AnalogSignal(csd_pqarr_filtered.T, t_start=lfp.t_start,
                                          sampling_rate=lfp.sampling_rate)
 
     return csd, csd_filtered
-
