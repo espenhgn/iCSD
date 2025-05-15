@@ -827,7 +827,7 @@ class SplineiCSD(CSD):
                                     epsabs=self.tol)[0]
                     f_mat1[j, i] = f_mat1[j, i] + (self.sigma-self.sigma_top) / \
                         (self.sigma + self.sigma_top) * \
-                            si.quad(self.f_mat1, a=z_js[i], b=z_js[i+1], \
+                            si.quad(self._f_mat1, a=z_js[i], b=z_js[i+1], \
                                 args=(-z_js[j+1], z_js[i], float(self.sigma),
                                       float(self.diam[j])), epsabs=self.tol)[0]
                     f_mat2[j, i] = f_mat2[j, i] + (self.sigma-self.sigma_top) / \
